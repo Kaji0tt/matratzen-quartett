@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/auth-store'
-import type { Database } from '@/types/database'
+import type { Database } from '@/types/database-gen'
 
 type ProfileRow = Database['public']['Tables']['profiles']['Row']
 

@@ -13,6 +13,7 @@ export interface Card {
   country: string
   condition: CardCondition
   stats: CardStats
+  notes?: string
   photographer_id: string
   photographer_username: string
   created_at: string
@@ -24,11 +25,11 @@ export interface Card {
 }
 
 export interface CardStats {
-  fluffiness: number     // Flauschigkeit (0-100)
-  patina: number         // Patina/Verwitterung (0-100)
-  size: number           // Größe (0-100)
-  findability: number    // Auffindbarkeit (0-100)
-  prestige: number       // Prestige-Standort (0-100)
+  alter: number          // Alter der Matratze (0-100)
+  flecken: number        // Menge/Intensität von Flecken (0-100)
+  witterung: number      // UV-Schäden, Verwitterung, Verformung (0-100)
+  geruch: number         // Muffigkeit, Geruchsintensität (0-100)
+  kontaminierung: number // Hygiene-Risiko / Kontaminierung (0-100)
 }
 
 export interface CardAttribute {

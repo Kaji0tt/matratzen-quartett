@@ -143,11 +143,11 @@ function CardFront({ card, size, showStats }: CardFrontProps) {
         {showStats && isLarge && (
           <div className="mt-2 grid grid-cols-2 gap-1">
             {Object.entries({
-              '🧸': card.stats.fluffiness,
-              '🌿': card.stats.patina,
-              '📐': card.stats.size,
-              '🔍': card.stats.findability,
-              '✨': card.stats.prestige,
+              '📅': card.stats.alter,
+              '🩹': card.stats.flecken,
+              '☀️': card.stats.witterung,
+              '👃': card.stats.geruch,
+              '🦠': card.stats.kontaminierung,
             }).map(([emoji, val]) => (
               <div key={emoji} className="flex items-center gap-1">
                 <span className="text-xs">{emoji}</span>

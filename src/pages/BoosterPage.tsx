@@ -1,8 +1,7 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { Coins, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { BoosterOpening } from '@/components/booster/BoosterOpening'
 import { useAuthStore } from '@/store/auth-store'
@@ -87,11 +86,11 @@ function generateDemoCards(pack: BoosterPack): CardType[] {
     country: 'DE',
     condition: 'good' as const,
     stats: {
-      fluffiness: Math.floor(Math.random() * 100),
-      patina: Math.floor(Math.random() * 100),
-      size: Math.floor(Math.random() * 100),
-      findability: Math.floor(Math.random() * 100),
-      prestige: Math.floor(Math.random() * 100),
+      alter: Math.floor(Math.random() * 100),
+      flecken: Math.floor(Math.random() * 100),
+      witterung: Math.floor(Math.random() * 100),
+      geruch: Math.floor(Math.random() * 100),
+      kontaminierung: Math.floor(Math.random() * 100),
     },
     photographer_id: 'demo',
     photographer_username: 'demo',
@@ -104,7 +103,18 @@ function generateDemoCards(pack: BoosterPack): CardType[] {
 
 export function BoosterPage() {
   const [selectedBooster, setSelectedBooster] = useState<BoosterPack | null>(null)
+  const [activeIndex, setActiveIndex] = useState(0)
+  const scrollRef = useRef<HTMLDivElement>(null)
   const { profile } = useAuthStore()
+
+  const handleScroll = () => {
+    if (!scrollRef.current) return
+    const el = scrollRef.current
+    // card width is 78vw + gap 16px
+    const itemWidth = el.clientWidth * 0.78 + 16
+    const index = Math.round(el.scrollLeft / itemWidth)
+    setActiveIndex(Math.max(0, Math.min(index, DEMO_BOOSTERS.length - 1)))
+  }
 
   const handleOpenBooster = async (): Promise<CardType[]> => {
     if (!selectedBooster) return []
@@ -131,98 +141,124 @@ export function BoosterPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="py-8">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="text-3xl font-bold text-white mb-2">Booster-Packs</h1>
-        <p className="text-muted-foreground mb-8">
-          Öffne Packs und entdecke neue Matratzen-Karten!
-        </p>
-
         {profile && (
-          <div className="flex items-center gap-2 mb-6 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 w-fit">
+          <div className="flex items-center gap-2 mb-6 mx-4 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 w-fit">
             <Coins className="w-4 h-4 text-amber-400" />
             <span className="font-bold text-amber-400">{profile.coins.toLocaleString()} Münzen</span>
           </div>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {DEMO_BOOSTERS.map((booster, i) => (
-            <motion.div
-              key={booster.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
-            >
-              <Card
-                className={`border-border/50 h-full flex flex-col ${
-                  booster.limited_edition ? 'border-amber-500/40 bg-amber-500/5' : ''
-                }`}
-              >
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">{booster.name}</CardTitle>
-                    {booster.limited_edition && (
-                      <Badge variant="legendary">Limited</Badge>
-                    )}
-                  </div>
-                  <CardDescription>{booster.description}</CardDescription>
-                </CardHeader>
-
-                <CardContent className="flex-1">
-                  <div className="text-5xl text-center py-4">
+        {/* Horizontal Snap Carousel */}
+        <div className="overflow-hidden">
+          <div
+            ref={scrollRef}
+            onScroll={handleScroll}
+            className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4"
+            style={{
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+              paddingLeft: 'calc(11vw)',
+              paddingRight: 'calc(11vw)',
+            }}
+          >
+            {DEMO_BOOSTERS.map((booster, i) => {
+              const isActive = i === activeIndex
+              return (
+                <motion.div
+                  key={booster.id}
+                  className="snap-center shrink-0 rounded-2xl border flex flex-col overflow-hidden cursor-pointer"
+                  animate={{
+                    scale: isActive ? 1 : 0.88,
+                    opacity: isActive ? 1 : 0.5,
+                  }}
+                  transition={{ type: 'spring', stiffness: 280, damping: 28 }}
+                  style={{
+                    width: '78vw',
+                    maxWidth: '320px',
+                    background: booster.limited_edition
+                      ? 'linear-gradient(145deg, rgba(251,191,36,0.12), rgba(168,85,247,0.1))'
+                      : 'rgba(255,255,255,0.04)',
+                    borderColor: booster.limited_edition
+                      ? 'rgba(251,191,36,0.4)'
+                      : 'rgba(255,255,255,0.1)',
+                    boxShadow: isActive
+                      ? booster.limited_edition
+                        ? '0 8px 40px rgba(251,191,36,0.2)'
+                        : '0 8px 40px rgba(0,0,0,0.4)'
+                      : 'none',
+                  }}
+                  onClick={() => isActive && setSelectedBooster(booster)}
+                >
+                  {/* Visual */}
+                  <div className="flex items-center justify-center py-12 text-8xl select-none">
                     {booster.limited_edition ? '🌟' : '📦'}
                   </div>
 
-                  {/* Rarity chances */}
-                  <div className="space-y-1.5 mt-2">
-                    {Object.entries(booster.rarity_weights)
-                      .filter(([, w]) => w > 0)
-                      .map(([rarity, weight]) => (
-                        <div key={rarity} className="flex items-center justify-between text-xs">
-                          <span className={`font-medium ${
-                            rarity === 'legendary' ? 'text-amber-400' :
-                            rarity === 'epic' ? 'text-purple-400' :
-                            rarity === 'rare' ? 'text-blue-400' :
-                            rarity === 'uncommon' ? 'text-green-400' :
-                            'text-slate-400'
-                          }`}>
-                            {rarity === 'legendary' ? 'Legendär' :
-                             rarity === 'epic' ? 'Episch' :
-                             rarity === 'rare' ? 'Selten' :
-                             rarity === 'uncommon' ? 'Ungewöhnlich' : 'Gewöhnlich'}
-                          </span>
-                          <span className="text-muted-foreground">{weight}%</span>
-                        </div>
-                      ))}
+                  {/* Info */}
+                  <div className="px-5 pb-6 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-bold text-white">{booster.name}</h3>
+                      {booster.limited_edition && (
+                        <Badge variant="legendary">Limited</Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground">{booster.description}</p>
+
+                    {/* Rarity chances */}
+                    <div className="space-y-1.5">
+                      {Object.entries(booster.rarity_weights)
+                        .filter(([, w]) => w > 0)
+                        .map(([rarity, weight]) => (
+                          <div key={rarity} className="flex items-center justify-between text-xs">
+                            <span className={`font-medium ${
+                              rarity === 'legendary' ? 'text-amber-400' :
+                              rarity === 'epic' ? 'text-purple-400' :
+                              rarity === 'rare' ? 'text-blue-400' :
+                              rarity === 'uncommon' ? 'text-green-400' :
+                              'text-slate-400'
+                            }`}>
+                              {rarity === 'legendary' ? 'Legendär' :
+                               rarity === 'epic' ? 'Episch' :
+                               rarity === 'rare' ? 'Selten' :
+                               rarity === 'uncommon' ? 'Ungewöhnlich' : 'Gewöhnlich'}
+                            </span>
+                            <span className="text-muted-foreground">{weight}%</span>
+                          </div>
+                        ))}
+                    </div>
+
+                    <p className="text-xs text-muted-foreground">{booster.card_count} Karten pro Pack</p>
+
+                    <Button
+                      variant={booster.limited_edition ? 'legendary' : 'gaming'}
+                      className="w-full gap-2"
+                      onClick={(e) => { e.stopPropagation(); setSelectedBooster(booster) }}
+                      disabled={!profile || (profile.coins < booster.price_coins)}
+                    >
+                      {!profile ? (
+                        <><Lock className="w-4 h-4" />Anmelden</>
+                      ) : (
+                        <><Coins className="w-4 h-4" />{booster.price_coins} Münzen</>
+                      )}
+                    </Button>
                   </div>
+                </motion.div>
+              )
+            })}
+          </div>
+        </div>
 
-                  <p className="text-xs text-muted-foreground mt-3">
-                    {booster.card_count} Karten pro Pack
-                  </p>
-                </CardContent>
-
-                <CardFooter>
-                  <Button
-                    variant={booster.limited_edition ? 'legendary' : 'gaming'}
-                    className="w-full gap-2"
-                    onClick={() => setSelectedBooster(booster)}
-                    disabled={!profile || (profile.coins < booster.price_coins)}
-                  >
-                    {!profile ? (
-                      <>
-                        <Lock className="w-4 h-4" />
-                        Anmelden
-                      </>
-                    ) : (
-                      <>
-                        <Coins className="w-4 h-4" />
-                        {booster.price_coins} Münzen
-                      </>
-                    )}
-                  </Button>
-                </CardFooter>
-              </Card>
-            </motion.div>
+        {/* Scroll indicator dots */}
+        <div className="flex justify-center gap-1.5 mt-4">
+          {DEMO_BOOSTERS.map((_, i) => (
+            <div
+              key={i}
+              className={`h-1.5 rounded-full transition-all duration-300 ${
+                i === activeIndex ? 'w-6 bg-white' : 'w-1.5 bg-white/25'
+              }`}
+            />
           ))}
         </div>
       </motion.div>

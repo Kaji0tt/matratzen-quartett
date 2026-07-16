@@ -10,6 +10,7 @@ import { LeaderboardPage } from '@/pages/LeaderboardPage'
 import { ProfilePage } from '@/pages/ProfilePage'
 import { NotificationsPage } from '@/pages/NotificationsPage'
 import { AdminPage } from '@/pages/AdminPage'
+import { SubmitCardPage } from '@/pages/SubmitCardPage'
 import { useAuth } from '@/hooks/use-auth'
 
 const queryClient = new QueryClient({
@@ -35,6 +36,7 @@ function AppRoutes() {
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/admin" element={<AdminPage />} />
+        <Route path="/submit" element={<SubmitCardPage />} />
       </Route>
     </Routes>
   )

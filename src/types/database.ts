@@ -63,11 +63,12 @@ export interface Database {
           city: string
           country: string
           condition: string
-          stat_fluffiness: number
-          stat_patina: number
-          stat_size: number
-          stat_findability: number
-          stat_prestige: number
+          stat_alter: number
+          stat_flecken: number
+          stat_witterung: number
+          stat_geruch: number
+          stat_kontaminierung: number
+          notes: string | null
           photographer_id: string
           is_approved: boolean
           report_count: number

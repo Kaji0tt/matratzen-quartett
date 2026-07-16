@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Home, Package, BookOpen, ArrowLeftRight, Trophy, User, Bell, Menu, X, Shield, Coins,
+  Home, Package, BookOpen, ArrowLeftRight, Trophy, User, Bell, Menu, X, Shield, Coins, PlusCircle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -15,6 +15,17 @@ const navItems = [
   { href: '/collection', label: 'Sammlung', icon: BookOpen },
   { href: '/trading', label: 'Handel', icon: ArrowLeftRight },
   { href: '/leaderboard', label: 'Rangliste', icon: Trophy },
+]
+
+const allMenuItems = [
+  { href: '/', label: 'Home', icon: Home },
+  { href: '/boosters', label: 'Booster', icon: Package },
+  { href: '/collection', label: 'Sammlung', icon: BookOpen },
+  { href: '/submit', label: 'Karte einreichen', icon: PlusCircle },
+  { href: '/trading', label: 'Handel', icon: ArrowLeftRight },
+  { href: '/leaderboard', label: 'Rangliste', icon: Trophy },
+  { href: '/notifications', label: 'Benachrichtigungen', icon: Bell },
+  { href: '/profile', label: 'Profil', icon: User },
 ]
 
 export function Navbar() {
@@ -131,7 +142,7 @@ export function Navbar() {
             className="fixed inset-x-0 top-16 z-40 bg-background/95 backdrop-blur-xl border-b border-border md:hidden"
           >
             <div className="container mx-auto px-4 py-4 flex flex-col gap-1">
-              {navItems.map(({ href, label, icon: Icon }) => (
+              {(profile ? allMenuItems : allMenuItems.filter(i => i.href !== '/notifications' && i.href !== '/profile')).map(({ href, label, icon: Icon }) => (
                 <Link
                   key={href}
                   to={href}
@@ -147,6 +158,31 @@ export function Navbar() {
                   {label}
                 </Link>
               ))}
+              {(profile?.is_admin || profile?.is_moderator) && (
+                <Link
+                  to="/admin"
+                  onClick={() => setMobileOpen(false)}
+                  className={cn(
+                    'flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium transition-colors',
+                    location.pathname === '/admin'
+                      ? 'bg-primary/20 text-primary'
+                      : 'text-amber-400/80 hover:text-amber-400 hover:bg-accent'
+                  )}
+                >
+                  <Shield className="w-4 h-4" />
+                  Administration
+                </Link>
+              )}
+              {!profile && (
+                <Link
+                  to="/auth"
+                  onClick={() => setMobileOpen(false)}
+                  className="flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                >
+                  <User className="w-4 h-4" />
+                  Anmelden
+                </Link>
+              )}
             </div>
           </motion.div>
         )}

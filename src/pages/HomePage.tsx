@@ -102,33 +102,6 @@ export function HomePage() {
         </div>
       </motion.div>
 
-      {/* Stats banner */}
-      {profile && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12"
-        >
-          {[
-            { label: 'Level', value: profile.level, icon: '⭐' },
-            { label: 'Karten', value: profile.cards_collected, icon: '🃏' },
-            { label: 'Elo', value: profile.elo_rating, icon: '🏆' },
-            { label: 'Münzen', value: profile.coins, icon: '🪙' },
-          ].map(({ label, value, icon }) => (
-            <Card key={label} className="border-border/50 bg-card/50">
-              <CardContent className="flex items-center gap-3 p-4">
-                <span className="text-2xl">{icon}</span>
-                <div>
-                  <p className="text-2xl font-bold text-white">{value.toLocaleString()}</p>
-                  <p className="text-xs text-muted-foreground">{label}</p>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </motion.div>
-      )}
-
       {/* Features */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
         {features.map(({ icon: Icon, title, description, color, bg }, i) => (
@@ -149,31 +122,7 @@ export function HomePage() {
         ))}
       </div>
 
-      {/* Rarity showcase */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.4 }}
-        className="text-center"
-      >
-        <h2 className="text-2xl font-bold text-white mb-6">Seltenheitsstufen</h2>
-        <div className="flex flex-wrap justify-center gap-3">
-          {[
-            { label: 'Gewöhnlich', color: 'text-slate-400', border: 'border-slate-400/30', bg: 'bg-slate-800' },
-            { label: 'Ungewöhnlich', color: 'text-green-400', border: 'border-green-500/50', bg: 'bg-green-900/30' },
-            { label: 'Selten', color: 'text-blue-400', border: 'border-blue-500/50', bg: 'bg-blue-900/30' },
-            { label: 'Episch', color: 'text-purple-400', border: 'border-purple-500/50', bg: 'bg-purple-900/30' },
-            { label: 'Legendär', color: 'text-amber-400', border: 'border-amber-400/70', bg: 'bg-amber-900/30' },
-          ].map(({ label, color, border, bg }) => (
-            <div
-              key={label}
-              className={`px-4 py-2 rounded-full border ${border} ${bg} ${color} font-medium text-sm`}
-            >
-              {label}
-            </div>
-          ))}
-        </div>
-      </motion.div>
+
     </div>
   )
 }

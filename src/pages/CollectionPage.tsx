@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Search, SlidersHorizontal, Star } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { CardDisplay } from '@/components/cards/CardDisplay'
+import { useDemoGameStore } from '@/store/demo-game-store'
 
 import type { Card, Rarity } from '@/types'
 
@@ -78,14 +79,25 @@ export function CollectionPage() {
   const [filterRarity, setFilterRarity] = useState<FilterRarity>('all')
   const [filterOwned, setFilterOwned] = useState<FilterOwned>('all')
   const [selectedCard, setSelectedCard] = useState<Card | null>(null)
+  const localCards = useDemoGameStore((state) => state.cards)
+  const track = useDemoGameStore((state) => state.track)
+  const hasTrackedOpen = useRef(false)
+  const ownedIds = new Set([...OWNED_IDS, ...localCards.map((card) => card.id)])
+  const cards = [...localCards, ...DEMO_CARDS]
+
+  useEffect(() => {
+    if (hasTrackedOpen.current) return
+    hasTrackedOpen.current = true
+    track('collection_opened', { source: 'local-demo' })
+  }, [track])
 
   const isFiltered = filterRarity !== 'all' || filterOwned !== 'all'
 
-  const filtered = DEMO_CARDS
+  const filtered = cards
     .filter((c) => filterRarity === 'all' || c.rarity === filterRarity)
     .filter((c) => {
-      if (filterOwned === 'owned') return OWNED_IDS.has(c.id)
-      if (filterOwned === 'missing') return !OWNED_IDS.has(c.id)
+      if (filterOwned === 'owned') return ownedIds.has(c.id)
+      if (filterOwned === 'missing') return !ownedIds.has(c.id)
       return true
     })
     .filter((c) => c.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -93,15 +105,18 @@ export function CollectionPage() {
     .sort((a, b) => rarityOrder[b.rarity] - rarityOrder[a.rarity])
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Search Bar + Filter – fixed, liquid glass */}
-      <div className="fixed top-[4.5rem] left-0 right-0 z-40 px-4">
-        <div className="flex gap-2 max-w-lg mx-auto">
+    <div className="container mx-auto px-4 pt-8 pb-20">
+      <p className="mb-6 text-center text-xs text-amber-300">
+        Demo-Sammlung: Booster-Karten und lokal eingereichte Demo-Karten bleiben in diesem Browser.
+      </p>
+      {/* Search and filters float above the footer; filters expand upward. */}
+      <div className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+7rem)] left-0 right-0 z-40 flex flex-col-reverse gap-3 px-4">
+        <div className="flex w-full gap-3 max-w-xl mx-auto">
           {/* Search pill */}
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="relative flex-1"
+            className="relative min-w-0 flex-1"
             style={{
               background: 'rgba(255,255,255,0.08)',
               backdropFilter: 'blur(24px) saturate(180%)',
@@ -111,12 +126,13 @@ export function CollectionPage() {
               boxShadow: '0 4px 24px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.12)',
             }}
           >
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50" />
+            <Search aria-hidden="true" className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/50" />
             <Input
+              aria-label="Karte oder Stadt suchen"
               placeholder="Karte oder Stadt suchen..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-10 bg-transparent border-none rounded-full text-white placeholder:text-white/40 focus-visible:ring-0 focus-visible:ring-offset-0"
+              className="h-14 pl-12 text-base bg-transparent border-none rounded-full text-white placeholder:text-white/40 focus-visible:ring-2 focus-visible:ring-purple-400 focus-visible:ring-offset-0"
             />
           </motion.div>
 
@@ -125,7 +141,10 @@ export function CollectionPage() {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             onClick={() => setFilterOpen(o => !o)}
-            className="relative flex-shrink-0 w-10 h-10 flex items-center justify-center"
+            aria-label="Kartenfilter"
+            aria-expanded={filterOpen}
+            aria-controls="collection-filters"
+            className="relative flex-shrink-0 w-14 h-14 flex items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-purple-400"
             style={{
               background: isFiltered ? 'rgba(139,92,246,0.35)' : 'rgba(255,255,255,0.08)',
               backdropFilter: 'blur(24px) saturate(180%)',
@@ -135,7 +154,7 @@ export function CollectionPage() {
               boxShadow: '0 4px 24px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.12)',
             }}
           >
-            <SlidersHorizontal className="w-4 h-4 text-white/70" />
+            <SlidersHorizontal aria-hidden="true" className="w-5 h-5 text-white/70" />
             {isFiltered && (
               <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-purple-400 rounded-full" />
             )}
@@ -146,11 +165,12 @@ export function CollectionPage() {
         <AnimatePresence>
           {filterOpen && (
             <motion.div
+              id="collection-filters"
               initial={{ opacity: 0, y: -8, scale: 0.97 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -8, scale: 0.97 }}
               transition={{ duration: 0.18 }}
-              className="mt-2 max-w-lg mx-auto p-4 space-y-4"
+              className="w-full max-w-xl mx-auto max-h-[calc(100dvh-env(safe-area-inset-bottom,0px)-12rem)] overflow-y-auto p-4 space-y-4"
               style={{
                 background: 'rgba(15,15,25,0.75)',
                 backdropFilter: 'blur(32px) saturate(180%)',
@@ -212,7 +232,7 @@ export function CollectionPage() {
         </AnimatePresence>
       </div>
 
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-14">
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
         {/* Cards Grid */}
         {filtered.length === 0 ? (
           <div className="text-center py-20 text-muted-foreground">
@@ -231,7 +251,10 @@ export function CollectionPage() {
                 <CardDisplay
                   card={card}
                   size="md"
-                  onClick={() => setSelectedCard(card)}
+                  onClick={() => {
+                    track('card_viewed', { card_id: card.id, rarity: card.rarity })
+                    setSelectedCard(card)
+                  }}
                 />
               </motion.div>
             ))}

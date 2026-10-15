@@ -1,0 +1,19 @@
+{
+  "name": "Matratzen Quartett",
+  "short_name": "Matratzen",
+  "description": "Das einzig wahre Matratzen Quartett. Sammle, handle und spiele mit Matratzen-Karten.",
+  "lang": "de",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
+  "icons": [
+    {
+      "src": "/mattress-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

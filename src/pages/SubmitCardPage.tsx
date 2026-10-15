@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { Navigate, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Camera, X, ChevronRight, ChevronLeft, Check, Loader2, Upload,
@@ -11,7 +11,9 @@ import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/auth-store'
 import { toast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
-import type { CardCondition } from '@/types'
+import { createDemoImageDataUrl } from '@/lib/demo-image'
+import { useDemoGameStore } from '@/store/demo-game-store'
+import type { Card as GameCard, CardCondition } from '@/types'
 
 const STAT_LABELS: Record<string, { label: string; hint: string }> = {
   alter:           { label: 'Alter',           hint: 'Wie alt wirkt die Matratze?' },
@@ -34,6 +36,9 @@ const STEPS = ['Foto', 'Details', 'Stats']
 export function SubmitCardPage() {
   const navigate = useNavigate()
   const { user, profile } = useAuthStore()
+  const addDemoCard = useDemoGameStore((state) => state.addCard)
+  const track = useDemoGameStore((state) => state.track)
+  const isDemo = !user || !profile
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [step, setStep] = useState(0)
@@ -62,12 +67,10 @@ export function SubmitCardPage() {
     kontaminierung: 50,
   })
 
-  if (!user || !profile) return <Navigate to="/auth" replace />
-
   // ── Handlers ────────────────────────────────────────────────
 
   const handleFileSelect = (file: File) => {
-    if (!file.type.startsWith('image/')) {
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
       toast({ title: 'Nur Bilder erlaubt', description: 'JPG, PNG oder WEBP.', variant: 'destructive' })
       return
     }
@@ -78,6 +81,7 @@ export function SubmitCardPage() {
     if (imagePreview) URL.revokeObjectURL(imagePreview)
     setImageFile(file)
     setImagePreview(URL.createObjectURL(file))
+    if (isDemo) track('upload_started', { mode: 'demo' })
   }
 
   const handleDrop = (e: React.DragEvent) => {
@@ -88,12 +92,43 @@ export function SubmitCardPage() {
   }
 
   const handleSubmit = async () => {
-    if (!imageFile || !user) return
+    if (!imageFile) return
     setIsSubmitting(true)
 
     try {
+      if (isDemo) {
+        const imageUrl = await createDemoImageDataUrl(imageFile)
+        const demoCard: GameCard = {
+          id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          name: name.trim(),
+          description: description.trim() || 'Eine selbst beschriebene Matratze aus dem lokalen Demo-Modus.',
+          rarity: 'common',
+          image_url: imageUrl,
+          location: location.trim(),
+          city: city.trim(),
+          country: country.trim().toUpperCase() || 'DE',
+          condition,
+          stats,
+          notes: notes.trim(),
+          photographer_id: 'demo-local',
+          photographer_username: 'Demo-Spiel',
+          created_at: new Date().toISOString(),
+          is_approved: true,
+          report_count: 0,
+          attributes: [],
+        }
+        if (!addDemoCard(demoCard)) throw new Error('Diese Demo-Karte wurde bereits hinzugefügt.')
+        toast({
+          title: 'Demo-Karte erstellt',
+          description: 'Die Karte und das komprimierte Bild bleiben lokal in diesem Browser. Es wurde keine KI verwendet.',
+        })
+        navigate('/collection')
+        return
+      }
+      if (!user) throw new Error('Für eine echte Einreichung ist eine Anmeldung erforderlich.')
+
       // 1. Upload image → card-images/{user_id}/{uuid}.ext
-      const ext = imageFile.name.split('.').pop()?.toLowerCase() ?? 'jpg'
+      const ext = imageFile.type === 'image/png' ? 'png' : imageFile.type === 'image/webp' ? 'webp' : 'jpg'
       const fileName = `${user.id}/${crypto.randomUUID()}.${ext}`
 
       const { error: uploadError } = await supabase.storage
@@ -126,12 +161,6 @@ export function SubmitCardPage() {
 
       if (insertError) throw insertError
 
-      // 3. Bump cards_contributed on profile
-      await supabase
-        .from('profiles')
-        .update({ cards_contributed: (profile.cards_contributed ?? 0) + 1 })
-        .eq('id', user.id)
-
       toast({
         title: '🛏️ Karte eingereicht!',
         description: 'Ein Moderator prüft deine Matratze. Du wirst benachrichtigt.',
@@ -139,6 +168,7 @@ export function SubmitCardPage() {
       navigate('/collection')
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Unbekannter Fehler'
+      if (isDemo) track('upload_failed', { mode: 'demo' })
       toast({ title: 'Fehler beim Einreichen', description: message, variant: 'destructive' })
     } finally {
       setIsSubmitting(false)
@@ -154,13 +184,16 @@ export function SubmitCardPage() {
   // ── Render ───────────────────────────────────────────────────
 
   return (
-    <div className="container mx-auto max-w-lg px-4 py-6 pb-28">
+    <div className="container mx-auto max-w-lg px-4 py-6">
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
         <h1 className="text-2xl font-bold text-white">Karte einreichen</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Fotografiere eine Straßenmatratze — nach Freigabe wird sie Teil des Spiels.
+          {isDemo
+            ? 'Lokale Demo: Erstelle eine Karte aus deinem Foto. Sie bleibt in diesem Browser und wird nicht hochgeladen.'
+            : 'Fotografiere eine Straßenmatratze — nach Freigabe wird sie Teil des Spiels.'}
         </p>
+        {isDemo && <p className="mt-2 text-xs text-amber-300">DEMO · keine KI-Generierung · kein Upload · keine Spielwährung</p>}
       </motion.div>
 
       {/* Step indicator */}
@@ -446,7 +479,7 @@ export function SubmitCardPage() {
           >
             {isSubmitting
               ? <><Loader2 className="w-4 h-4 animate-spin" /> Wird eingereicht…</>
-              : <><Check className="w-4 h-4" /> Karte einreichen</>
+              : <><Check className="w-4 h-4" /> {isDemo ? 'Demo-Karte erstellen' : 'Karte einreichen'}</>
             }
           </Button>
         )}
@@ -454,8 +487,9 @@ export function SubmitCardPage() {
 
       {step === 2 && (
         <p className="text-xs text-muted-foreground text-center mt-4">
-          Nach der Einreichung wird deine Karte von einem Moderator geprüft.<br />
-          Bei Genehmigung erhältst du <span className="text-amber-400 font-semibold">+200 🪙</span> und <span className="text-blue-400 font-semibold">+XP</span>.
+          {isDemo
+            ? 'Deine Demo-Karte und ein komprimiertes Bild werden lokal in diesem Browser gespeichert. Es gibt keine Belohnung.'
+            : 'Nach der Einreichung prüft ein Moderator deine Karte. Belohnungen werden erst nach einer serverseitigen Freigabe gutgeschrieben.'}
         </p>
       )}
     </div>

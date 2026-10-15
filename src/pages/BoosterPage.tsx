@@ -1,10 +1,11 @@
 import { useState, useRef } from 'react'
 import { motion } from 'framer-motion'
-import { Coins, Lock } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Coins } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { BoosterOpening } from '@/components/booster/BoosterOpening'
-import { useAuthStore } from '@/store/auth-store'
+import { useDemoGameStore } from '@/store/demo-game-store'
 import { toast } from '@/hooks/use-toast'
 import type { BoosterPack, Card as CardType } from '@/types'
 
@@ -56,56 +57,12 @@ const DEMO_BOOSTERS: BoosterPack[] = [
   },
 ]
 
-function generateDemoCards(pack: BoosterPack): CardType[] {
-  const rarities: CardType['rarity'][] = []
-  for (let i = 0; i < pack.card_count; i++) {
-    const rand = Math.random() * 100
-    let cumulative = 0
-    let chosen: CardType['rarity'] = 'common'
-    for (const [rarity, weight] of Object.entries(pack.rarity_weights)) {
-      cumulative += weight
-      if (rand <= cumulative) {
-        chosen = rarity as CardType['rarity']
-        break
-      }
-    }
-    rarities.push(chosen)
-  }
-
-  const names = ['Wohnungsauflösung', 'Bürgersteig-Bett', 'Parkbank-Begleiter', 'Hinterhof-Hüter', 'Straßenlager', 'Kellerfund', 'Dachboden-Schatz']
-  const cities = ['Berlin', 'Hamburg', 'München', 'Köln', 'Frankfurt', 'Stuttgart', 'Düsseldorf']
-
-  return rarities.map((rarity, i) => ({
-    id: `demo-${Date.now()}-${i}`,
-    name: names[Math.floor(Math.random() * names.length)],
-    description: 'Eine gefundene Straßenmatratze mit Geschichte.',
-    rarity,
-    image_url: '',
-    location: 'Hauptstraße',
-    city: cities[Math.floor(Math.random() * cities.length)],
-    country: 'DE',
-    condition: 'good' as const,
-    stats: {
-      alter: Math.floor(Math.random() * 100),
-      flecken: Math.floor(Math.random() * 100),
-      witterung: Math.floor(Math.random() * 100),
-      geruch: Math.floor(Math.random() * 100),
-      kontaminierung: Math.floor(Math.random() * 100),
-    },
-    photographer_id: 'demo',
-    photographer_username: 'demo',
-    created_at: new Date().toISOString(),
-    is_approved: true,
-    report_count: 0,
-    attributes: [],
-  }))
-}
-
 export function BoosterPage() {
   const [selectedBooster, setSelectedBooster] = useState<BoosterPack | null>(null)
   const [activeIndex, setActiveIndex] = useState(0)
   const scrollRef = useRef<HTMLDivElement>(null)
-  const { profile } = useAuthStore()
+  const coins = useDemoGameStore((state) => state.coins)
+  const openBooster = useDemoGameStore((state) => state.openBooster)
 
   const handleScroll = () => {
     if (!scrollRef.current) return
@@ -117,10 +74,9 @@ export function BoosterPage() {
   }
 
   const handleOpenBooster = async (): Promise<CardType[]> => {
-    if (!selectedBooster) return []
-    // In production: call Supabase RPC/Edge Function
+    if (!selectedBooster) throw new Error('Wähle zuerst ein Booster-Pack aus.')
     await new Promise(resolve => setTimeout(resolve, 500))
-    return generateDemoCards(selectedBooster)
+    return openBooster(selectedBooster, globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`)
   }
 
   const handleComplete = () => {
@@ -143,12 +99,19 @@ export function BoosterPage() {
   return (
     <div className="py-8">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-        {profile && (
-          <div className="flex items-center gap-2 mb-6 mx-4 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 w-fit">
+        <div className="mb-4 px-4 text-xs text-amber-300">
+          Demo-Modus: Booster und Münzen werden nur lokal in diesem Browser gespeichert.
+        </div>
+        <div className="mx-4 mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-2xl font-bold text-white">Booster</h1>
+          <Button asChild variant="ghost" size="sm">
+            <Link to="/shop">Münzen-Shop (Demo)</Link>
+          </Button>
+        </div>
+        <div className="flex items-center gap-2 mb-6 mx-4 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 w-fit">
             <Coins className="w-4 h-4 text-amber-400" />
-            <span className="font-bold text-amber-400">{profile.coins.toLocaleString()} Münzen</span>
-          </div>
-        )}
+            <span className="font-bold text-amber-400">{coins.toLocaleString()} Demo-Münzen</span>
+        </div>
 
         {/* Horizontal Snap Carousel */}
         <div className="overflow-hidden">
@@ -235,13 +198,9 @@ export function BoosterPage() {
                       variant={booster.limited_edition ? 'legendary' : 'gaming'}
                       className="w-full gap-2"
                       onClick={(e) => { e.stopPropagation(); setSelectedBooster(booster) }}
-                      disabled={!profile || (profile.coins < booster.price_coins)}
+                      disabled={coins < booster.price_coins}
                     >
-                      {!profile ? (
-                        <><Lock className="w-4 h-4" />Anmelden</>
-                      ) : (
-                        <><Coins className="w-4 h-4" />{booster.price_coins} Münzen</>
-                      )}
+                      <><Coins className="w-4 h-4" />{booster.price_coins} Demo-Münzen</>
                     </Button>
                   </div>
                 </motion.div>

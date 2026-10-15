@@ -14,7 +14,8 @@ dist-ssr/
 .env.*.local
 
 # Editor
-.vscode/
+.vscode/*
+!.vscode/tasks.json
 .idea/
 *.suo
 *.ntvs*

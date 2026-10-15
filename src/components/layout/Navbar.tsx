@@ -1,192 +1,49 @@
-import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
-import {
-  Home, Package, BookOpen, ArrowLeftRight, Trophy, User, Bell, Menu, X, Shield, Coins, PlusCircle,
-} from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { House, PackageOpen, Swords } from 'lucide-react'
+import { PlayingCards } from '@/components/ui/playing-cards'
 import { cn } from '@/lib/utils'
-import { useAuthStore } from '@/store/auth-store'
-import { useAppStore } from '@/store/app-store'
 
-const navItems = [
-  { href: '/', label: 'Home', icon: Home },
-  { href: '/boosters', label: 'Boosters', icon: Package },
-  { href: '/collection', label: 'Sammlung', icon: BookOpen },
-  { href: '/trading', label: 'Handel', icon: ArrowLeftRight },
-  { href: '/leaderboard', label: 'Rangliste', icon: Trophy },
-]
-
-const allMenuItems = [
-  { href: '/', label: 'Home', icon: Home },
-  { href: '/boosters', label: 'Booster', icon: Package },
-  { href: '/collection', label: 'Sammlung', icon: BookOpen },
-  { href: '/submit', label: 'Karte einreichen', icon: PlusCircle },
-  { href: '/trading', label: 'Handel', icon: ArrowLeftRight },
-  { href: '/leaderboard', label: 'Rangliste', icon: Trophy },
-  { href: '/notifications', label: 'Benachrichtigungen', icon: Bell },
-  { href: '/profile', label: 'Profil', icon: User },
+const items = [
+  { href: '/', label: 'Home', icon: House },
+  { href: '/training', label: 'Spielen', icon: Swords },
+  { href: '/collection', label: 'Kollektion', icon: PlayingCards },
+  { href: '/boosters', label: 'Booster', icon: PackageOpen },
 ]
 
 export function Navbar() {
-  const [mobileOpen, setMobileOpen] = useState(false)
-  const location = useLocation()
-  const { profile } = useAuthStore()
-  const { notificationCount } = useAppStore()
+  const { pathname } = useLocation()
+  const activeHref = pathname === '/shop' ? '/boosters'
+    : items.find(({ href }) => href !== '/' && pathname === href)?.href ?? '/'
 
   return (
-    <>
-      <nav className="fixed top-0 left-0 right-0 z-50 h-16 border-b border-border/50 bg-background/80 backdrop-blur-xl">
-        <div className="container mx-auto h-full flex items-center justify-between px-4">
-          {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 font-bold text-white">
-            <span className="text-2xl">🛏️</span>
-            <span className="hidden sm:block font-gaming text-sm bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-              MATRATZEN
-              <br />
-              QUARTETT
-            </span>
-          </Link>
-
-          {/* Desktop nav */}
-          <div className="hidden md:flex items-center gap-1">
-            {navItems.map(({ href, label, icon: Icon }) => (
-              <Link
-                key={href}
-                to={href}
-                className={cn(
-                  'flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors',
-                  location.pathname === href
-                    ? 'bg-primary/20 text-primary'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-                )}
-              >
-                <Icon className="w-4 h-4" />
-                {label}
-              </Link>
-            ))}
-          </div>
-
-          {/* Right side */}
-          <div className="flex items-center gap-2">
-            {profile && (
-              <>
-                {/* Coins */}
-                <div className="hidden sm:flex items-center gap-1 px-2 py-1 rounded-md bg-amber-500/10 border border-amber-500/20">
-                  <Coins className="w-3.5 h-3.5 text-amber-400" />
-                  <span className="text-xs font-bold text-amber-400">
-                    {profile.coins.toLocaleString()}
-                  </span>
-                </div>
-
-                {/* Notifications */}
-                <Link to="/notifications" className="relative">
-                  <Button variant="ghost" size="icon" className="relative">
-                    <Bell className="w-4 h-4" />
-                    {notificationCount > 0 && (
-                      <motion.span
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-[10px] font-bold text-white flex items-center justify-center"
-                      >
-                        {notificationCount > 9 ? '9+' : notificationCount}
-                      </motion.span>
-                    )}
-                  </Button>
-                </Link>
-
-                {/* Profile */}
-                <Link to="/profile">
-                  <Button variant="ghost" size="icon">
-                    <User className="w-4 h-4" />
-                  </Button>
-                </Link>
-
-                {/* Admin */}
-                {(profile.is_admin || profile.is_moderator) && (
-                  <Link to="/admin">
-                    <Button variant="ghost" size="icon">
-                      <Shield className="w-4 h-4 text-amber-400" />
-                    </Button>
-                  </Link>
-                )}
-              </>
-            )}
-
-            {!profile && (
-              <Link to="/auth">
-                <Button variant="gaming" size="sm">Anmelden</Button>
-              </Link>
-            )}
-
-            {/* Mobile menu toggle */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="md:hidden"
-              onClick={() => setMobileOpen(!mobileOpen)}
+    <footer className="floating-footer-position pointer-events-none fixed inset-x-0 z-40 px-3 sm:px-6">
+      <nav
+        aria-label="Hauptnavigation"
+        className="floating-header floating-gradient-border home-navigation pointer-events-auto mx-auto grid w-full max-w-[960px] grid-cols-4 gap-1 rounded-[1.5rem] border border-transparent p-2 text-slate-100 sm:gap-3"
+      >
+        {items.map(({ href, label, icon: Icon }) => {
+          const isActive = activeHref === href
+          return (
+            <Link
+              key={href}
+              to={href}
+              aria-current={isActive ? 'page' : undefined}
+              className={cn(
+                'flex min-h-16 min-w-0 flex-col items-center justify-center gap-1 rounded-2xl py-1 text-xs font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-purple-400',
+                isActive ? 'bg-purple-400/15 text-purple-100' : 'text-slate-300 hover:bg-white/5 hover:text-white'
+              )}
             >
-              {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </Button>
-          </div>
-        </div>
+              <span className={cn(
+                'floating-gradient-border flex h-10 w-10 items-center justify-center rounded-full border border-transparent',
+                isActive ? 'floating-booster-button text-purple-950' : 'floating-menu-trigger text-slate-200'
+              )}>
+                <Icon aria-hidden="true" className="h-6 w-6" />
+              </span>
+              <span>{label}</span>
+            </Link>
+          )
+        })}
       </nav>
-
-      {/* Mobile menu */}
-      <AnimatePresence>
-        {mobileOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="fixed inset-x-0 top-16 z-40 bg-background/95 backdrop-blur-xl border-b border-border md:hidden"
-          >
-            <div className="container mx-auto px-4 py-4 flex flex-col gap-1">
-              {(profile ? allMenuItems : allMenuItems.filter(i => i.href !== '/notifications' && i.href !== '/profile')).map(({ href, label, icon: Icon }) => (
-                <Link
-                  key={href}
-                  to={href}
-                  onClick={() => setMobileOpen(false)}
-                  className={cn(
-                    'flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium transition-colors',
-                    location.pathname === href
-                      ? 'bg-primary/20 text-primary'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-                  )}
-                >
-                  <Icon className="w-4 h-4" />
-                  {label}
-                </Link>
-              ))}
-              {(profile?.is_admin || profile?.is_moderator) && (
-                <Link
-                  to="/admin"
-                  onClick={() => setMobileOpen(false)}
-                  className={cn(
-                    'flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium transition-colors',
-                    location.pathname === '/admin'
-                      ? 'bg-primary/20 text-primary'
-                      : 'text-amber-400/80 hover:text-amber-400 hover:bg-accent'
-                  )}
-                >
-                  <Shield className="w-4 h-4" />
-                  Administration
-                </Link>
-              )}
-              {!profile && (
-                <Link
-                  to="/auth"
-                  onClick={() => setMobileOpen(false)}
-                  className="flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                >
-                  <User className="w-4 h-4" />
-                  Anmelden
-                </Link>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </>
+    </footer>
   )
 }

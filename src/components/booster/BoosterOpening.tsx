@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Sparkles, Package, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CardDisplay } from '@/components/cards/CardDisplay'
+import { toast } from '@/hooks/use-toast'
 import { cn, getRarityColor } from '@/lib/utils'
 import type { Card, BoosterPack } from '@/types'
 
@@ -29,6 +30,11 @@ export function BoosterOpening({ booster, onOpen, onComplete }: BoosterOpeningPr
       setTimeout(() => setPhase('revealing'), 1500)
     } catch (err) {
       console.error('Failed to open booster:', err)
+      toast({
+        title: 'Booster konnte nicht geöffnet werden',
+        description: err instanceof Error ? err.message : 'Bitte versuche es erneut.',
+        variant: 'destructive',
+      })
     } finally {
       setIsLoading(false)
     }

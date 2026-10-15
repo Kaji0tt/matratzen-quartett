@@ -1,0 +1,68 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Supabase: Login",
+      "type": "shell",
+      "command": "supabase",
+      "args": ["login", "--profile", "matratzen-quartett"],
+      "options": { "cwd": "${workspaceFolder}", "env": { "SUPABASE_ACCESS_TOKEN": "" } },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "focus": true, "panel": "dedicated" }
+    },
+    {
+      "label": "Supabase: Link project",
+      "type": "shell",
+      "command": "supabase",
+      "args": ["link", "--project-ref", "kzibwksmlfoxosmkuhuk", "--profile", "matratzen-quartett"],
+      "options": { "cwd": "${workspaceFolder}", "env": { "SUPABASE_ACCESS_TOKEN": "" } },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "focus": true, "panel": "dedicated" }
+    },
+    {
+      "label": "Supabase: List migrations",
+      "type": "shell",
+      "command": "supabase",
+      "args": ["migration", "list", "--linked", "--profile", "matratzen-quartett"],
+      "options": { "cwd": "${workspaceFolder}", "env": { "SUPABASE_ACCESS_TOKEN": "" } },
+      "problemMatcher": []
+    },
+    {
+      "label": "Supabase: Preview migrations",
+      "type": "shell",
+      "command": "supabase",
+      "args": ["db", "push", "--linked", "--dry-run", "--profile", "matratzen-quartett"],
+      "options": { "cwd": "${workspaceFolder}", "env": { "SUPABASE_ACCESS_TOKEN": "" } },
+      "problemMatcher": []
+    },
+    {
+      "label": "Supabase: Deploy migrations",
+      "type": "shell",
+      "command": "supabase",
+      "args": ["db", "push", "--linked", "--profile", "matratzen-quartett"],
+      "options": { "cwd": "${workspaceFolder}", "env": { "SUPABASE_ACCESS_TOKEN": "" } },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "focus": true, "panel": "dedicated" }
+    },
+    {
+      "label": "Supabase: Deploy Edge Function",
+      "type": "shell",
+      "command": "supabase",
+      "args": [
+        "functions", "deploy", "${input:supabaseFunctionName}",
+        "--project-ref", "kzibwksmlfoxosmkuhuk",
+        "--use-api", "--profile", "matratzen-quartett"
+      ],
+      "options": { "cwd": "${workspaceFolder}", "env": { "SUPABASE_ACCESS_TOKEN": "" } },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    }
+  ],
+  "inputs": [
+    {
+      "id": "supabaseFunctionName",
+      "type": "promptString",
+      "description": "Name einer vorhandenen Edge Function unter supabase\\functions"
+    }
+  ]
+}

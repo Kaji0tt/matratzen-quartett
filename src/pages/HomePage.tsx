@@ -1,8 +1,8 @@
-import { useLayoutEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, Coins, Crown, Plus, Swords } from 'lucide-react'
 import { AccountMenu } from '@/components/layout/AccountMenu'
 import { PlayingCards } from '@/components/ui/playing-cards'
+import { useFittedWordmark } from '@/hooks/use-fitted-wordmark'
 import { useAuthStore } from '@/store/auth-store'
 import { useDemoGameStore } from '@/store/demo-game-store'
 
@@ -20,40 +20,7 @@ export function HomePage() {
   const profile = useAuthStore((state) => state.profile)
   const isLoading = useAuthStore((state) => state.isLoading)
   const demoCoins = useDemoGameStore((state) => state.coins)
-  const brandRef = useRef<HTMLDivElement>(null)
-  const wordmarkRef = useRef<HTMLHeadingElement>(null)
-
-  useLayoutEffect(() => {
-    const brand = brandRef.current
-    const wordmark = wordmarkRef.current
-    if (!brand || !wordmark) return
-    let active = true
-    let previousWidth = -1
-
-    const fitWordmark = () => {
-      if (!active || brand.clientWidth === 0) return
-      const availableWidth = brand.clientWidth - 2
-      wordmark.style.fontSize = '100px'
-      for (let pass = 0; pass < 3; pass++) {
-        const size = Number.parseFloat(wordmark.style.fontSize)
-        wordmark.style.fontSize = `${size * availableWidth / wordmark.getBoundingClientRect().width}px`
-      }
-    }
-    const observer = new ResizeObserver(() => {
-      if (brand.clientWidth === previousWidth) return
-      previousWidth = brand.clientWidth
-      fitWordmark()
-    })
-    observer.observe(brand)
-    fitWordmark()
-    void document.fonts.ready.then(fitWordmark)
-    document.fonts.addEventListener('loadingdone', fitWordmark)
-    return () => {
-      active = false
-      observer.disconnect()
-      document.fonts.removeEventListener('loadingdone', fitWordmark)
-    }
-  }, [])
+  const { brandRef, wordmarkRef } = useFittedWordmark()
 
   return (
     <div className="home-screen">

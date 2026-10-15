@@ -1,279 +1,139 @@
-import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Sparkles, Package, ChevronRight } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { CardDisplay } from '@/components/cards/CardDisplay'
-import { toast } from '@/hooks/use-toast'
-import { cn, getRarityColor } from '@/lib/utils'
-import type { Card, BoosterPack } from '@/types'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useReducedMotion } from 'framer-motion'
+import { Link } from 'react-router-dom'
+import { ArrowRight, Check, Crown, MapPin, ScanLine, Sparkles } from 'lucide-react'
+import { getRarityLabel } from '@/lib/utils'
+import type { Card, CardStats } from '@/types'
 
 interface BoosterOpeningProps {
-  booster: BoosterPack
-  onOpen: () => Promise<Card[]>
+  cards: Card[]
   onComplete: () => void
 }
 
-type Phase = 'idle' | 'opening' | 'revealing' | 'done'
-
-export function BoosterOpening({ booster, onOpen, onComplete }: BoosterOpeningProps) {
-  const [phase, setPhase] = useState<Phase>('idle')
-  const [cards, setCards] = useState<Card[]>([])
-  const [revealedCards, setRevealedCards] = useState<Set<number>>(new Set())
-  const [isLoading, setIsLoading] = useState(false)
-
-  const handleOpenPack = async () => {
-    setIsLoading(true)
-    try {
-      const newCards = await onOpen()
-      setCards(newCards)
-      setPhase('opening')
-      setTimeout(() => setPhase('revealing'), 1500)
-    } catch (err) {
-      console.error('Failed to open booster:', err)
-      toast({
-        title: 'Booster konnte nicht geöffnet werden',
-        description: err instanceof Error ? err.message : 'Bitte versuche es erneut.',
-        variant: 'destructive',
-      })
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleRevealCard = (index: number) => {
-    setRevealedCards((prev) => new Set([...prev, index]))
-  }
-
-  const handleRevealAll = () => {
-    setRevealedCards(new Set(cards.map((_, i) => i)))
-  }
-
-  const allRevealed = revealedCards.size === cards.length && cards.length > 0
-
-  return (
-    <div className="flex flex-col items-center min-h-[60vh] justify-center px-4">
-      <AnimatePresence mode="wait">
-        {phase === 'idle' && (
-          <motion.div
-            key="idle"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            className="flex flex-col items-center gap-6 text-center"
-          >
-            <motion.div
-              animate={{ y: [0, -10, 0] }}
-              transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-              className="text-8xl"
-            >
-              📦
-            </motion.div>
-            <div>
-              <h2 className="text-2xl font-bold text-white">{booster.name}</h2>
-              <p className="text-muted-foreground mt-1">{booster.description}</p>
-              <p className="text-sm text-muted-foreground mt-2">
-                {booster.card_count} Karten · {booster.price_coins} Münzen
-              </p>
-            </div>
-            <Button
-              variant="gaming"
-              size="xl"
-              onClick={handleOpenPack}
-              disabled={isLoading}
-              className="gap-2"
-            >
-              <Package className="w-5 h-5" />
-              {isLoading ? 'Öffne...' : 'Pack öffnen!'}
-            </Button>
-          </motion.div>
-        )}
-
-        {phase === 'opening' && (
-          <motion.div
-            key="opening"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="flex flex-col items-center gap-4"
-          >
-            <motion.div
-              animate={{
-                scale: [1, 1.2, 1.5, 0.1],
-                rotate: [0, 10, -10, 0],
-                opacity: [1, 1, 1, 0],
-              }}
-              transition={{ duration: 1.4, ease: 'easeInOut' }}
-              className="text-9xl"
-            >
-              📦
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, scale: 0 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.8, duration: 0.4 }}
-            >
-              <Sparkles className="w-12 h-12 text-amber-400" />
-            </motion.div>
-          </motion.div>
-        )}
-
-        {(phase === 'revealing' || phase === 'done') && (
-          <motion.div
-            key="revealing"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex flex-col items-center gap-6 w-full max-w-2xl"
-          >
-            <h2 className="text-xl font-bold text-white">Deine Karten!</h2>
-
-            {/* Cards grid */}
-            <div className="flex flex-wrap justify-center gap-3">
-              {cards.map((card, index) => (
-                <FlippableCard
-                  key={card.id}
-                  card={card}
-                  index={index}
-                  isRevealed={revealedCards.has(index)}
-                  onReveal={() => handleRevealCard(index)}
-                />
-              ))}
-            </div>
-
-            {/* Actions */}
-            <div className="flex gap-3 flex-wrap justify-center">
-              {!allRevealed && (
-                <Button variant="outline" onClick={handleRevealAll}>
-                  Alle aufdecken
-                </Button>
-              )}
-              {allRevealed && (
-                <Button variant="gaming" onClick={onComplete} className="gap-2">
-                  Weiter <ChevronRight className="w-4 h-4" />
-                </Button>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  )
+const STAT_LABELS: Record<keyof CardStats, string> = {
+  alter: 'Alter', flecken: 'Flecken', witterung: 'Witterung', geruch: 'Geruch', kontaminierung: 'Kontamination',
 }
 
-interface FlippableCardProps {
-  card: Card
-  index: number
-  isRevealed: boolean
-  onReveal: () => void
-}
+const FRACTURE_EDGE = [
+  [0, 0], [32, 0], [73, 0], [100, 0], [100, 34], [100, 76],
+  [100, 100], [68, 100], [27, 100], [0, 100], [0, 68], [0, 29],
+] as const
 
-function FlippableCard({ card, index, isRevealed, onReveal }: FlippableCardProps) {
+export function BoosterOpening({ cards, onComplete }: BoosterOpeningProps) {
+  const [revealAll, setRevealAll] = useState(false)
+  const [revealed, setRevealed] = useState<Set<number>>(() => new Set())
+  const completeRef = useRef<HTMLButtonElement>(null)
+  const allRevealed = revealed.size === cards.length
+
+  useEffect(() => {
+    if (allRevealed) completeRef.current?.focus()
+  }, [allRevealed])
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 40 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.15 }}
-      className="card-flip-container w-40 h-56"
-      onClick={!isRevealed ? onReveal : undefined}
-    >
-      <div className={cn('card-inner', isRevealed && 'flipped')}>
-        {/* Back face (visible first) */}
-        <div className="card-face">
-          <div className="w-full h-full bg-gradient-to-br from-slate-800 via-slate-900 to-black rounded-xl flex items-center justify-center cursor-pointer hover:brightness-110 transition-all border border-slate-700">
-            <div className="text-5xl opacity-40">🛏️</div>
-            {!isRevealed && (
-              <motion.div
-                className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-xl"
-                whileHover={{ opacity: 1 }}
-                initial={{ opacity: 0 }}
-              >
-                <span className="text-sm text-white font-medium">Aufdecken</span>
-              </motion.div>
-            )}
-          </div>
-        </div>
-
-        {/* Front face (revealed) */}
-        <div className="card-face card-back">
-          <RevealedCard card={card} />
-        </div>
+    <div className="booster-opening">
+      <div className="booster-reveal-status">
+        <span><Sparkles aria-hidden="true" /> DEIN DROP</span>
+        <span role="status" aria-live="polite">{revealed.size} / {cards.length} aufgedeckt</span>
       </div>
-    </motion.div>
-  )
-}
-
-function RevealedCard({ card }: { card: Card }) {
-  return (
-    <div className="relative w-full h-full">
-      <CardDisplay card={card} size="md" showStats={false} />
-
-      {/* Reveal flash effect */}
-      <motion.div
-        className="absolute inset-0 bg-white rounded-xl"
-        initial={{ opacity: 0.8 }}
-        animate={{ opacity: 0 }}
-        transition={{ duration: 0.5 }}
-      />
-
-      {/* Rarity-specific reveal effects */}
-      {(card.rarity === 'epic' || card.rarity === 'legendary') && (
-        <RevealParticles rarity={card.rarity} />
-      )}
-
-      {/* Rarity label popup */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ delay: 0.3, type: 'spring', stiffness: 200 }}
-        className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap"
-      >
-        {card.rarity !== 'common' && (
-          <span
-            className={cn(
-              'text-xs font-bold px-2 py-0.5 rounded-full bg-black/60',
-              getRarityColor(card.rarity)
-            )}
-          >
-            {card.rarity === 'legendary' && '⭐ '}
-            {card.rarity === 'epic' && '💜 '}
-            {card.rarity === 'rare' && '💎 '}
-            {card.rarity === 'uncommon' && '✨ '}
-            {card.rarity.toUpperCase()}
-          </span>
+      <div className="booster-card-grid">
+        {cards.map((card, index) => (
+          <ShatterCard key={card.id} card={card} index={index} revealAll={revealAll} onRevealed={() => setRevealed(previous => new Set([...previous, index]))} />
+        ))}
+      </div>
+      <div className="booster-reveal-actions">
+        {allRevealed ? (
+          <>
+            <p><Check aria-hidden="true" /> Alle Karten sind in deiner Demo-Sammlung.</p>
+            <Link to="/collection" className="home-cta">Zur Sammlung<ArrowRight aria-hidden="true" /></Link>
+            <button ref={completeRef} className="booster-text-button" onClick={onComplete}>Nächstes Pack wählen<ArrowRight aria-hidden="true" /></button>
+          </>
+        ) : (
+          <button className="booster-text-button" onClick={() => setRevealAll(true)} disabled={revealAll}><ScanLine aria-hidden="true" />{revealAll ? 'Karten werden aufgedeckt …' : 'Alle Karten aufdecken'}</button>
         )}
-      </motion.div>
+      </div>
     </div>
   )
 }
 
-function RevealParticles({ rarity }: { rarity: 'epic' | 'legendary' }) {
-  const color = rarity === 'legendary' ? '#f59e0b' : '#a855f7'
-  const count = rarity === 'legendary' ? 20 : 12
+function CardSleeve() {
+  return (
+    <span className="booster-sleeve">
+      <span className="booster-sleeve__serial">MQ / STREET ARCHIVE</span>
+      <span className="booster-sleeve__emblem"><Crown /><strong>MQ</strong><span>FUNDSTÜCK</span></span>
+      <span className="booster-sleeve__tap"><ScanLine /> ZUM AUFDECKEN TIPPEN</span>
+    </span>
+  )
+}
+
+function ShatterCard({ card, index, revealAll, onRevealed }: { card: Card; index: number; revealAll: boolean; onRevealed: () => void }) {
+  const [phase, setPhase] = useState<'covered' | 'shattering' | 'revealed'>('covered')
+  const reduceMotion = useReducedMotion()
+  const onRevealedRef = useRef(onRevealed)
+  onRevealedRef.current = onRevealed
+
+  useEffect(() => {
+    if (!revealAll || phase !== 'covered') return
+    const timer = window.setTimeout(() => setPhase('shattering'), reduceMotion ? 0 : index * 110)
+    return () => window.clearTimeout(timer)
+  }, [revealAll, phase, index, reduceMotion])
+
+  useEffect(() => {
+    if (phase !== 'shattering') return
+    const timer = window.setTimeout(() => {
+      setPhase('revealed')
+      onRevealedRef.current()
+    }, reduceMotion ? 40 : 700)
+    return () => window.clearTimeout(timer)
+  }, [phase, reduceMotion])
 
   return (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-xl">
-      {[...Array(count)].map((_, i) => (
-        <motion.div
-          key={i}
-          className="absolute w-1.5 h-1.5 rounded-full"
-          style={{
-            backgroundColor: color,
-            left: `${Math.random() * 100}%`,
-            top: `${Math.random() * 100}%`,
-          }}
-          initial={{ scale: 0, opacity: 1 }}
-          animate={{
-            scale: [0, 1, 0],
-            opacity: [1, 1, 0],
-            y: [0, -60 - Math.random() * 40],
-            x: [0, (Math.random() - 0.5) * 60],
-          }}
-          transition={{
-            duration: 1 + Math.random() * 0.5,
-            delay: Math.random() * 0.3,
-            ease: 'easeOut',
-          }}
-        />
-      ))}
+    <div className={`booster-card-slot booster-card-slot--${phase}`} style={{ '--card-delay': `${index * 65}ms` } as CSSProperties}>
+      {phase !== 'covered' && <div className="booster-card-front" aria-hidden={phase !== 'revealed'}><StreetCard card={card} /></div>}
+      {phase === 'covered' && (
+        <button className="booster-covered-card" onClick={() => setPhase('shattering')} aria-label={`Karte ${index + 1} aufdecken`}>
+          <CardSleeve />
+          <span className="booster-card-number">{String(index + 1).padStart(2, '0')}</span>
+        </button>
+      )}
+      {phase === 'shattering' && (
+        <div className="booster-shatter" aria-hidden="true">
+          {FRACTURE_EDGE.map((edge, piece) => {
+            const next = FRACTURE_EDGE[(piece + 1) % FRACTURE_EDGE.length]
+            return (
+              <span key={piece} className="booster-shard" style={{
+                clipPath: `polygon(52% 48%, ${edge[0]}% ${edge[1]}%, ${next[0]}% ${next[1]}%)`,
+                '--shard-x': `${((edge[0] + next[0]) / 2 - 52) * 1.7}%`,
+                '--shard-y': `${((edge[1] + next[1]) / 2 - 48) * 1.7}%`,
+                '--shard-turn': `${(piece % 2 ? 1 : -1) * (12 + piece * 3)}deg`,
+                '--shard-delay': `${piece % 4 * 22}ms`,
+              } as CSSProperties}><CardSleeve /></span>
+            )
+          })}
+          <span className="booster-glitch-line" />
+        </div>
+      )}
     </div>
+  )
+}
+
+function StreetCard({ card }: { card: Card }) {
+  return (
+    <article className={`street-card street-card--${card.rarity}`} aria-label={`${card.name}, ${getRarityLabel(card.rarity)}`}>
+      <div className="street-card__image">
+        <img src={card.image_url || '/art/street-mattress.svg'} alt={card.image_url ? card.name : 'Illustrierte Straßenmatratze als Beispielmotiv'} />
+        <span className="street-card__topline"><Crown /><span>MQ / STREET FINDS</span><Crown /></span>
+        <span className="street-card__rarity">{getRarityLabel(card.rarity)}</span>
+        {!card.image_url && <span className="street-card__sample">DEMO ART</span>}
+      </div>
+      <div className="street-card__info">
+        <h2>{card.name}</h2>
+        <p><MapPin aria-hidden="true" />{card.city}<span> / {card.country}</span></p>
+        <dl>{Object.entries(STAT_LABELS).map(([key, label]) => {
+          const value = card.stats[key as keyof CardStats]
+          return <div key={key}><dt>{label}</dt><dd><span className="street-card__meter" aria-hidden="true"><i style={{ width: `${value}%` }} /></span><b>{value}</b></dd></div>
+        })}</dl>
+      </div>
+      <footer className="street-card__footer"><span>MATRATZEN QUARTETT</span><span>{card.edition_number ? `#${card.edition_number}/${card.total_editions ?? '–'}` : 'VOL. 01'}</span></footer>
+    </article>
   )
 }

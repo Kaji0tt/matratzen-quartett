@@ -1,14 +1,12 @@
 import { Outlet } from 'react-router-dom'
-import { Navbar } from './Navbar'
 import { Toaster } from '@/components/ui/toaster'
 
 export function Layout() {
   return (
     <div className="min-h-screen bg-background">
-      <main className="floating-footer-content min-h-screen">
+      <main className="min-h-screen pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)]">
         <Outlet />
       </main>
-      <Navbar />
       <Toaster />
     </div>
   )

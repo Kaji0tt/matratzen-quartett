@@ -109,8 +109,8 @@ export function CollectionPage() {
       <p className="mb-6 text-center text-xs text-amber-300">
         Demo-Sammlung: Booster-Karten und lokal eingereichte Demo-Karten bleiben in diesem Browser.
       </p>
-      {/* Search and filters float above the footer; filters expand upward. */}
-      <div className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+7rem)] left-0 right-0 z-40 flex flex-col-reverse gap-3 px-4">
+      {/* Filters expand upward above the search bar. */}
+      <div className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] left-0 right-0 z-40 flex flex-col-reverse gap-3 px-4">
         <div className="flex w-full gap-3 max-w-xl mx-auto">
           {/* Search pill */}
           <motion.div

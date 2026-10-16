@@ -31,6 +31,10 @@ Ein Community-basiertes Multiplayer-Sammelkarten- und Quartettspiel. Fotografier
 - **🌙 Dark Mode** – Gaming-Look, Mobile First
 - **Navigation** – Die Hauptbereiche sind über Home erreichbar. Auf allen Seiten und Unterseiten entfällt der Floating Footer samt reserviertem Leerraum; Safe-Area-Abstände bleiben erhalten.
 
+Alle Unterseiten haben einen einheitlichen, vollständig runden Zurückknopf im violetten Neon-Design, fest unten links und mit Abstand zu den Safe Areas. Er führt direkt zu Home; Home selbst zeigt keinen Zurückknopf. Auf scrollbaren Seiten bleibt am Ende Platz für den Knopf. Die Booster-Ansicht misst ihren Platzbedarf und skaliert bei Bedarf proportional auf die verfügbare dynamische Viewport-Höhe, einschließlich Kartenaufdeckung und Abschlussaktionen. Der Zurückknopf bleibt dabei unskaliert und erreichbar; das horizontale Pack-/Kartenkarussell bleibt bedienbar.
+
+Der Retrowave-Hintergrund der Booster-Bühne reicht auch bei verkleinerter Ansicht und auf breiten Bildschirmen bis zu beiden Bildschirmrändern; nur die Inhalte werden auf den verfügbaren Platz skaliert.
+
 ---
 
 Home priorisiert „Matratze einreichen“ und „Spielen“ in neonumrandeten CTA-Containern, ergänzt durch Sammlungsvorschau und Booster-Kachel. Lokale SVG-Artworks, violett-blaue Glow-Effekte und eine mobileoptimierte Anordnung setzen den Street-Art-/Gaming-Look um. Die dekorativen Karten sind Beispielillustrationen, keine Vorschau des persönlichen Kartenbesitzes; die angezeigte Kartenanzahl stammt aus dem Profil beziehungsweise lokalen Demo-Spielstand. Animationen respektieren die Einstellung für reduzierte Bewegung. Profil, Einstellungen, Benachrichtigungen, Handel, Rangliste, Demo-Shop und berechtigte Administration sind über „Profil & mehr“ erreichbar. Der Kontostand wird auf Home aus dem bestehenden Profil beziehungsweise lokalen Demo-Spielstand angezeigt und verlinkt den Demo-Münzen-Shop, nicht zusätzlich global im Footer. Die Booster-Seite verlinkt ebenfalls den bestehenden Demo-Münzen-Shop.

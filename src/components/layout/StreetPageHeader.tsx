@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { ArrowLeft, Coins, Crown, Plus } from 'lucide-react'
+import { Coins, Crown, Plus } from 'lucide-react'
 import { useFittedWordmark } from '@/hooks/use-fitted-wordmark'
 
 export function StreetPageHeader({ first, accent, subtitle, coins }: {
@@ -12,7 +12,6 @@ export function StreetPageHeader({ first, accent, subtitle, coins }: {
 
   return (
     <header className="street-header">
-      <Link to="/" className="street-back"><ArrowLeft aria-hidden="true" /> Home</Link>
       <div className="street-header__brand" ref={brandRef}>
         <h1 className="home-wordmark" ref={wordmarkRef}>
           <Crown aria-hidden="true" />

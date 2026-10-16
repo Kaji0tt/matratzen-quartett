@@ -14,10 +14,11 @@ export function useFittedWordmark() {
     const fitWordmark = () => {
       if (!active || brand.clientWidth === 0) return
       const availableWidth = brand.clientWidth - 2
+      const scale = brand.getBoundingClientRect().width / brand.offsetWidth
       wordmark.style.fontSize = '100px'
       for (let pass = 0; pass < 3; pass++) {
         const size = Number.parseFloat(wordmark.style.fontSize)
-        wordmark.style.fontSize = `${size * availableWidth / wordmark.getBoundingClientRect().width}px`
+        wordmark.style.fontSize = `${size * availableWidth * scale / wordmark.getBoundingClientRect().width}px`
       }
     }
     const observer = new ResizeObserver(() => {

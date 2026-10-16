@@ -8,6 +8,7 @@ import { PlayingCards } from '@/components/ui/playing-cards'
 import { useDemoGameStore } from '@/store/demo-game-store'
 import { toast } from '@/hooks/use-toast'
 import { useFittedWordmark } from '@/hooks/use-fitted-wordmark'
+import { useViewportFit } from '@/hooks/use-viewport-fit'
 import type { BoosterPack, Card } from '@/types'
 
 const BOOSTERS: BoosterPack[] = [
@@ -103,6 +104,7 @@ function RetrowaveScene({ onHorizonReached }: { onHorizonReached: () => void }) 
 }
 
 export function BoosterPage() {
+  const { viewportRef, contentRef, scale } = useViewportFit()
   const [phase, setPhase] = useState<Phase>('selecting')
   const { carouselRef, activeIndex, setActiveIndex, isCarouselMoving, selectItem: selectPack } = useBoosterCarousel(phase === 'selecting')
   const [cards, setCards] = useState<Card[]>([])
@@ -156,7 +158,8 @@ export function BoosterPage() {
       }
       start.pulling = true
     }
-    const distance = Math.max(0, Math.min(start.maxDistance, dy))
+    const pointerScale = event.currentTarget.offsetHeight / event.currentTarget.getBoundingClientRect().height
+    const distance = Math.max(0, Math.min(start.maxDistance, dy * pointerScale))
     event.currentTarget.style.setProperty('--pack-pull', `${distance}px`)
     event.currentTarget.classList.toggle('is-pulling', distance > 8)
     const stage = event.currentTarget.closest<HTMLElement>('.booster-stage')
@@ -216,7 +219,8 @@ export function BoosterPage() {
   }
 
   return (
-    <div className="booster-screen">
+    <div className="booster-viewport" ref={viewportRef}>
+    <div className="booster-screen" ref={contentRef} style={{ '--viewport-scale': scale, transform: `translateX(-50%) scale(${scale})` } as CSSProperties}>
       <header className="home-header booster-header">
         <div className="home-brand" ref={brandRef}>
           <h1 className="home-wordmark" ref={headingRef} tabIndex={-1} aria-label="Frisch von der Straße">
@@ -308,9 +312,7 @@ export function BoosterPage() {
           </>
         ) : <BoosterOpening cards={cards} onComplete={handleComplete} />}
       </section>
-      <div className="booster-back-row">
-        <Link to="/" className="booster-back">{'<- Zurück'}</Link>
-      </div>
+    </div>
     </div>
   )
 }

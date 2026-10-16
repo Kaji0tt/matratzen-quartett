@@ -229,13 +229,12 @@ export function TrainingPage() {
               </CardContent>
             </Card>
           )}
-          <p className="street-demo-note">Lokale Demo · kein Multiplayer. Demo-Münzen und Ergebnisse sind getrennt von deinem Online-Konto.</p>
-
           {!match.result && (
             <Button variant="ghost" onClick={abandonMatch}>Match abbrechen und Einsatz erstatten</Button>
           )}
         </div>
       )}
+      <p className="street-demo-note">Lokale Demo · kein Multiplayer. Demo-Münzen und Ergebnisse sind getrennt von deinem Online-Konto.</p>
     </div>
   )
 }

@@ -35,6 +35,8 @@ Alle Unterseiten haben einen einheitlichen, vollständig runden Zurückknopf im 
 
 Der Retrowave-Hintergrund der Booster-Bühne reicht auch bei verkleinerter Ansicht und auf breiten Bildschirmen bis zu beiden Bildschirmrändern; nur die Inhalte werden auf den verfügbaren Platz skaliert.
 
+Das gemeinsame Karussell für Boosterpacks und erhaltene Karten nutzt ebenfalls die volle Bildschirmbreite, auch bei aktiver Höhenskalierung. Die mittige Snap-Position bleibt erhalten; seitliche Packs und Karten werden erst am Bildschirmrand statt am eingerückten Inhaltscontainer abgeschnitten.
+
 ---
 
 Home priorisiert „Matratze einreichen“ und „Spielen“ in neonumrandeten CTA-Containern, ergänzt durch Sammlungsvorschau und Booster-Kachel. Lokale SVG-Artworks, violett-blaue Glow-Effekte und eine mobileoptimierte Anordnung setzen den Street-Art-/Gaming-Look um. Die dekorativen Karten sind Beispielillustrationen, keine Vorschau des persönlichen Kartenbesitzes; die angezeigte Kartenanzahl stammt aus dem Profil beziehungsweise lokalen Demo-Spielstand. Animationen respektieren die Einstellung für reduzierte Bewegung. Profil, Einstellungen, Benachrichtigungen, Handel, Rangliste, Demo-Shop und berechtigte Administration sind über „Profil & mehr“ erreichbar. Der Kontostand wird auf Home aus dem bestehenden Profil beziehungsweise lokalen Demo-Spielstand angezeigt und verlinkt den Demo-Münzen-Shop, nicht zusätzlich global im Footer. Die Booster-Seite verlinkt ebenfalls den bestehenden Demo-Münzen-Shop.

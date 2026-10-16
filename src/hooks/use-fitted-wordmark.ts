@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef } from 'react'
 
-export function useFittedWordmark() {
+export function useFittedWordmark(maxFontSize?: number) {
   const brandRef = useRef<HTMLDivElement>(null)
   const wordmarkRef = useRef<HTMLHeadingElement>(null)
 
@@ -20,6 +20,9 @@ export function useFittedWordmark() {
         const size = Number.parseFloat(wordmark.style.fontSize)
         wordmark.style.fontSize = `${size * availableWidth * scale / wordmark.getBoundingClientRect().width}px`
       }
+      if (maxFontSize !== undefined && Number.parseFloat(wordmark.style.fontSize) > maxFontSize) {
+        wordmark.style.fontSize = `${maxFontSize}px`
+      }
     }
     const observer = new ResizeObserver(() => {
       if (brand.clientWidth === previousWidth) return
@@ -35,7 +38,7 @@ export function useFittedWordmark() {
       observer.disconnect()
       document.fonts.removeEventListener('loadingdone', fitWordmark)
     }
-  }, [])
+  }, [maxFontSize])
 
   return { brandRef, wordmarkRef }
 }

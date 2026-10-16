@@ -113,7 +113,7 @@ export function TrainingPage() {
 
   return (
     <div className="street-screen training-screen">
-      <StreetPageHeader first="Dein Kiez." accent="Dein Duell." subtitle="SPIELEN / TRAINING · Gegen einen simulierten Gegner" coins={coins} />
+      <StreetPageHeader first="Dein Kiez." accent="Dein Spiel." coins={coins} />
       <section className="home-panel training-daily" aria-label="Tägliche Demo-Belohnung">
           <Gift aria-hidden="true" className="training-daily__icon" />
           <div><h2>Neuer Tag. Neuer Fund.</h2><p>Hol dir einmal pro lokalem Kalendertag 50 Demo-Münzen.</p></div>

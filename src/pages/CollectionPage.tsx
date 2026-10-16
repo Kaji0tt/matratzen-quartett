@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, Check, Search, SlidersHorizontal, Layers, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, Search, SlidersHorizontal, Layers, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'
@@ -108,7 +108,7 @@ export function CollectionPage() {
 
   return (
     <div className="street-screen collection-screen">
-      <StreetPageHeader first="Deine" accent="Sammlung" subtitle="Fundstücke mit Geschichte. Dein Street-Archiv." />
+      <StreetPageHeader first="Lost &" accent="Laid" subtitle="Deine Bordsteinjuwelen" />
       <section className="home-panel collection-overview" aria-label="Sammlungsfortschritt">
         <div>
           <span className="home-brush-label home-brush-label--small">STREET ARCHIVE</span>
@@ -124,6 +124,9 @@ export function CollectionPage() {
       <p className="street-demo-note">Demo-Sammlung · Booster-Karten und eigene Demo-Funde bleiben in diesem Browser.</p>
       <section className="collection-toolbar" aria-label="Sammlung durchsuchen">
         <div className="collection-search-row">
+          <Link to="/" className="page-back collection-toolbar__back" aria-label="Zurück zu Home" title="Zurück zu Home">
+            <ArrowLeft aria-hidden="true" />
+          </Link>
           <div className="relative min-w-0 flex-1">
             <Search aria-hidden="true" className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/50" />
             <Input
@@ -131,29 +134,26 @@ export function CollectionPage() {
               placeholder="Karte oder Stadt suchen..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="collection-search h-12 pl-12 text-base text-white placeholder:text-white/40 focus-visible:ring-purple-400"
+              className="collection-search h-[52px] pl-12 text-base text-white placeholder:text-white/40 focus-visible:ring-purple-400"
             />
           </div>
 
-          {/* Filter button */}
           <button
             onClick={() => setFilterOpen(o => !o)}
-            aria-label="Kartenfilter"
+            aria-label={`Kartenfilter${isFiltered ? ' (aktiv)' : ''}`}
             aria-expanded={filterOpen}
             aria-controls="collection-filters"
             className={`street-filter-toggle${filterOpen || isFiltered ? ' is-active' : ''}`}
           >
-            <SlidersHorizontal aria-hidden="true" className="w-4 h-4" />
-            Filter{isFiltered ? ' · aktiv' : ''}
+            <SlidersHorizontal aria-hidden="true" className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Filter panel */}
-          {filterOpen && (
-            <div
-              id="collection-filters"
-              className="collection-filters space-y-4"
-            >
+        {filterOpen && (
+          <div
+            id="collection-filters"
+            className="collection-filters space-y-4"
+          >
               {/* Rarität */}
               <div>
                 <p className="text-xs font-semibold text-white/40 uppercase tracking-widest mb-2">Rarität</p>
@@ -203,8 +203,8 @@ export function CollectionPage() {
                   })}
                 </div>
               </div>
-            </div>
-          )}
+          </div>
+        )}
       </section>
 
       <div className="collection-results">

@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Coins, RotateCcw, Swords } from 'lucide-react'
-import { CardDisplay } from '@/components/cards/CardDisplay'
+import { Link } from 'react-router-dom'
+import { ArrowRight, Check, Coins, Gift, RotateCcw, Swords, Zap } from 'lucide-react'
+import { StreetCard } from '@/components/cards/StreetCard'
+import { StreetPageHeader } from '@/components/layout/StreetPageHeader'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { getDemoDayKey, useDemoGameStore, type DemoMatchMode, type DemoMatchResult } from '@/store/demo-game-store'
 import type { Card as GameCard, CardStats } from '@/types'
 
@@ -110,71 +112,71 @@ export function TrainingPage() {
   }
 
   return (
-    <div className="container mx-auto max-w-5xl px-4 py-8">
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="mb-2 inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-300">
-            <span aria-hidden="true">DEMO</span> Lokal gespeichert · kein Multiplayer
-          </p>
-          <h1 className="text-2xl font-bold text-white">Spielen</h1>
-          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-            Trainingsduell: Wähle zwischen schnellem Spiel und Einsatzspiel gegen einen simulierten Gegner. Diese Demo-Währung ist getrennt von deinem Supabase-Konto.
-          </p>
-        </div>
-        <div className="flex items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-amber-300">
-          <Coins className="h-4 w-4" />
-          <span className="font-bold">{coins.toLocaleString()} Demo-Münzen</span>
-        </div>
-      </div>
-      <Card className="mb-5 border-border/50">
-        <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
-          <p className="text-sm text-muted-foreground">Tägliche Demo-Aufgabe: einmal pro lokalem Kalendertag 50 Demo-Münzen.</p>
-          <Button
-            variant="outline"
+    <div className="street-screen training-screen">
+      <StreetPageHeader first="Dein Kiez." accent="Dein Duell." subtitle="SPIELEN / TRAINING · Gegen einen simulierten Gegner" coins={coins} />
+      <section className="home-panel training-daily" aria-label="Tägliche Demo-Belohnung">
+          <Gift aria-hidden="true" className="training-daily__icon" />
+          <div><h2>Neuer Tag. Neuer Fund.</h2><p>Hol dir einmal pro lokalem Kalendertag 50 Demo-Münzen.</p></div>
+          <button
+            className="street-secondary training-reward"
             disabled={lastDailyReward === getDemoDayKey()}
             onClick={() => setRewardNotice(claimDailyReward()
               ? '50 Demo-Münzen wurden lokal gutgeschrieben.'
               : 'Die tägliche Demo-Belohnung wurde heute bereits abgeholt.')}
           >
-            {lastDailyReward === getDemoDayKey() ? 'Heute abgeholt' : '50 Demo-Münzen abholen'}
-          </Button>
-        </CardContent>
-      </Card>
+            {lastDailyReward === getDemoDayKey() ? <Check aria-hidden="true" /> : <Coins aria-hidden="true" />}
+            {lastDailyReward === getDemoDayKey() ? 'Heute abgeholt' : '+50 abholen'}
+          </button>
+      </section>
       {rewardNotice && <p role="status" className="mb-4 text-sm text-amber-300">{rewardNotice}</p>}
 
       {!match ? (
-        <Card className="border-border/50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-white">
-              <Swords className="h-5 w-5 text-primary" /> Match vorbereiten
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            <p className="text-sm text-muted-foreground">
-              Dein Deck enthält {cards.length} Karten. Bei jedem Zug wählst du eine Karte und einen ihrer fünf Werte. Der Sieger erhält beide Karten; bei Gleichstand bleiben sie liegen. Das Match endet, wenn ein Deck leer ist oder spätestens nach 20 Runden.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <Button aria-pressed={mode === 'quick'} variant={mode === 'quick' ? 'gaming' : 'outline'} onClick={() => setMode('quick')}>
-                Schnelles Spiel · ohne Einsatz
-              </Button>
-              <Button
+        <>
+          <section className="home-panel training-intro">
+            <div>
+              <span className="home-brush-label home-brush-label--small">TRAINING</span>
+              <h2>Zeig, was dein<br /><span>Deck draufhat.</span></h2>
+              <p>Die Straße teilt aus. Du wählst den stärksten Wert.</p>
+              <Link to="/collection" className="training-deck-link">{cards.length} Karten in deinem Deck<ArrowRight aria-hidden="true" /></Link>
+            </div>
+            <div className="training-intro__art" aria-hidden="true">
+              <div className="training-intro__card">{sortedCards[0] ? <StreetCard card={sortedCards[0]} /> : <Swords />}</div>
+              <span>VS</span>
+            </div>
+          </section>
+          <section aria-labelledby="training-mode-heading">
+            <div className="street-section-heading"><h2 id="training-mode-heading">Wähle deinen Modus</h2><span>01 / MATCH VORBEREITEN</span></div>
+            <div className="training-modes">
+              <button className={`home-panel training-mode${mode === 'quick' ? ' is-selected' : ''}`} aria-pressed={mode === 'quick'} onClick={() => setMode('quick')}>
+                <Zap aria-hidden="true" /><span className="training-mode__check" aria-hidden="true">{mode === 'quick' && <Check />}</span>
+                <strong>Schnelles Spiel</strong><span>Ohne Einsatz. Einfach loslegen.</span><b>FREE PLAY / 0 MÜNZEN</b>
+              </button>
+              <button
+                className={`home-panel training-mode training-mode--stake${mode === 'stake' ? ' is-selected' : ''}`}
                 aria-pressed={mode === 'stake'}
-                variant={mode === 'stake' ? 'gaming' : 'outline'}
                 onClick={() => setMode('stake')}
                 disabled={coins < 50}
               >
-                Einsatzspiel · 50 Demo-Münzen
-              </Button>
+                <Coins aria-hidden="true" /><span className="training-mode__check" aria-hidden="true">{mode === 'stake' && <Check />}</span>
+                <strong>Einsatzspiel</strong><span>{coins < 50 ? 'Dir fehlen noch Demo-Münzen.' : 'Mehr Nervenkitzel. Gleiche Regeln.'}</span><b>50 DEMO-MÜNZEN EINSATZ</b>
+              </button>
             </div>
-            <Button onClick={beginMatch} disabled={cards.length < 2} className="gap-2">
-              <Swords className="h-4 w-4" /> Trainingsmatch starten
-            </Button>
+            <div className="training-start">
+              <button onClick={beginMatch} disabled={cards.length < 2} className="home-cta">
+                <Swords aria-hidden="true" /> Trainingsmatch starten<ArrowRight aria-hidden="true" />
+              </button>
+              <span>{mode === 'quick' ? 'Ohne Einsatz' : '50 Demo-Münzen Einsatz'} · Max. 20 Runden</span>
+            </div>
             {cards.length < 2 && <p className="text-sm text-destructive">Mindestens zwei Karten sind für ein Match erforderlich.</p>}
-          </CardContent>
-        </Card>
+          </section>
+          <section className="training-rules" aria-label="Spielregeln">
+            <h2>So läuft dein Duell</h2>
+            <ol><li><b>01</b><span>Karte und einen ihrer fünf Werte wählen.</span></li><li><b>02</b><span>Höherer Wert gewinnt beide Karten. Gleichstand? Beide bleiben liegen.</span></li><li><b>03</b><span>Deck leeren oder nach 20 Runden mehr Karten besitzen.</span></li></ol>
+          </section>
+        </>
       ) : (
         <div className="space-y-5">
-          <Card className="border-border/50">
+          <Card className="home-panel">
             <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
               <p className="font-semibold text-white">Runde {match.round} · Trainingsgegner (simuliert)</p>
               <p className="text-sm text-muted-foreground">
@@ -183,16 +185,16 @@ export function TrainingPage() {
             </CardContent>
           </Card>
 
-          <p role="status" aria-live="polite" className="rounded-lg border border-border/50 bg-card/70 p-4 text-sm text-muted-foreground">
+          <p role="status" aria-live="polite" className="training-round-message">
             {match.message}
           </p>
 
           {!match.result && (
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="training-hand">
               {match.playerCards.map((card) => (
-                <Card key={card.id} className="border-border/50">
+                <Card key={card.id} className="home-panel training-hand-card">
                   <CardContent className="flex flex-col items-center gap-3 p-4">
-                    <CardDisplay card={card} size="md" />
+                    <div className="training-playing-card"><StreetCard card={card} /></div>
                     <p className="font-semibold text-white">{card.name}</p>
                     <div className="grid w-full grid-cols-2 gap-2">
                       {(Object.keys(statLabels) as (keyof CardStats)[]).map((stat) => (
@@ -202,7 +204,7 @@ export function TrainingPage() {
                           size="sm"
                           onClick={() => playRound(card, stat)}
                         >
-                          {statLabels[stat]} · {card.stats[stat]}
+                          <span>{statLabels[stat]}</span><b>{card.stats[stat]}</b>
                         </Button>
                       ))}
                     </div>
@@ -213,7 +215,7 @@ export function TrainingPage() {
           )}
 
           {match.result && (
-            <Card className="border-primary/30">
+            <Card className="home-panel training-result">
               <CardContent className="flex flex-wrap items-center justify-between gap-4 p-5">
                 <div>
                   <h2 className="font-bold text-white">
@@ -227,6 +229,7 @@ export function TrainingPage() {
               </CardContent>
             </Card>
           )}
+          <p className="street-demo-note">Lokale Demo · kein Multiplayer. Demo-Münzen und Ergebnisse sind getrennt von deinem Online-Konto.</p>
 
           {!match.result && (
             <Button variant="ghost" onClick={abandonMatch}>Match abbrechen und Einsatz erstatten</Button>

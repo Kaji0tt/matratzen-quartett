@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useRef, useState, type CSSProperties } from 'react'
 import { useReducedMotion } from 'framer-motion'
 import { Link } from 'react-router-dom'
-import { ArrowRight, Check, Crown, MapPin, ScanLine, Sparkles } from 'lucide-react'
+import { ArrowRight, Check, Crown, ScanLine, Sparkles } from 'lucide-react'
+import { StreetCard } from '@/components/cards/StreetCard'
 import { getRarityLabel } from '@/lib/utils'
+import { useBoosterCarousel } from './use-booster-carousel'
 import type { Card, CardStats } from '@/types'
 
 interface BoosterOpeningProps {
@@ -20,14 +22,10 @@ const FRACTURE_EDGE = [
 ] as const
 
 export function BoosterOpening({ cards, onComplete }: BoosterOpeningProps) {
-  const [revealAll, setRevealAll] = useState(false)
   const [revealed, setRevealed] = useState<Set<number>>(() => new Set())
-  const completeRef = useRef<HTMLButtonElement>(null)
+  const { carouselRef, activeIndex, isCarouselMoving, selectItem } = useBoosterCarousel()
+  const pressedCard = useRef<{ index: number; x: number; y: number; selected: boolean } | null>(null)
   const allRevealed = revealed.size === cards.length
-
-  useEffect(() => {
-    if (allRevealed) completeRef.current?.focus()
-  }, [allRevealed])
 
   return (
     <div className="booster-opening">
@@ -35,9 +33,47 @@ export function BoosterOpening({ cards, onComplete }: BoosterOpeningProps) {
         <span><Sparkles aria-hidden="true" /> DEIN DROP</span>
         <span role="status" aria-live="polite">{revealed.size} / {cards.length} aufgedeckt</span>
       </div>
-      <div className="booster-card-grid">
+      <p id="booster-card-instructions" className="sr-only">Wische oder nutze die Pfeiltasten, um eine Karte auszuwählen. Pos1 und Ende wählen die erste und letzte Karte. Tippe die mittige Karte an oder drücke die Eingabetaste, um sie aufzudecken.</p>
+      <div ref={carouselRef} className="booster-pack-grid booster-drop-carousel" role="group" aria-label="Erhaltene Karten auswählen">
         {cards.map((card, index) => (
-          <ShatterCard key={card.id} card={card} index={index} revealAll={revealAll} onRevealed={() => setRevealed(previous => new Set([...previous, index]))} />
+          <div className="booster-pack-slot" key={`${card.id}-${index}`}>
+            <button
+              type="button"
+              className={`booster-option booster-drop-card${index === activeIndex ? ' is-selected' : ''}${revealed.has(index) ? ' is-revealed' : ''}`}
+              aria-pressed={index === activeIndex}
+              aria-label={revealed.has(index) ? `Karte ${index + 1}: ${card.name}, ${getRarityLabel(card.rarity)}, aufgedeckt. ${card.city}, ${card.country}. ${Object.entries(STAT_LABELS).map(([key, label]) => `${label}: ${card.stats[key as keyof CardStats]}`).join(', ')}` : `Karte ${index + 1}, verdeckt, ${index === activeIndex ? 'zum Aufdecken antippen' : 'auswählen'}`}
+              aria-describedby="booster-card-instructions"
+              onPointerDown={event => {
+                pressedCard.current = { index, x: event.clientX, y: event.clientY, selected: index === activeIndex && !isCarouselMoving }
+              }}
+              onPointerCancel={() => { pressedCard.current = null }}
+              onClick={event => {
+                const start = pressedCard.current
+                pressedCard.current = null
+                if (event.detail > 0 && (!start || start.index !== index || Math.hypot(event.clientX - start.x, event.clientY - start.y) > 8)) return
+                if (index !== activeIndex || (event.detail > 0 && !start?.selected) || isCarouselMoving) selectItem(index)
+                else setRevealed(previous => new Set([...previous, index]))
+              }}
+              onKeyDown={event => {
+                const next = event.key === 'ArrowRight' ? Math.min(index + 1, cards.length - 1)
+                  : event.key === 'ArrowLeft' ? Math.max(index - 1, 0)
+                    : event.key === 'Home' ? 0 : event.key === 'End' ? cards.length - 1 : null
+                if (next === null) return
+                event.preventDefault()
+                selectItem(next)
+                carouselRef.current?.children[next]?.querySelector('button')?.focus({ preventScroll: true })
+              }}
+            >
+              <span className="booster-card-reveal" aria-hidden="true">
+                {revealed.has(index) ? <CardReveal card={card} /> : (
+                  <span className="booster-card-back">
+                    <CardSleeve />
+                    <span className="booster-card-number">{String(index + 1).padStart(2, '0')}</span>
+                  </span>
+                )}
+              </span>
+            </button>
+          </div>
         ))}
       </div>
       <div className="booster-reveal-actions">
@@ -45,58 +81,31 @@ export function BoosterOpening({ cards, onComplete }: BoosterOpeningProps) {
           <>
             <p><Check aria-hidden="true" /> Alle Karten sind in deiner Demo-Sammlung.</p>
             <Link to="/collection" className="home-cta">Zur Sammlung<ArrowRight aria-hidden="true" /></Link>
-            <button ref={completeRef} className="booster-text-button" onClick={onComplete}>Nächstes Pack wählen<ArrowRight aria-hidden="true" /></button>
+            <button className="booster-text-button" onClick={onComplete}>Nächstes Pack wählen<ArrowRight aria-hidden="true" /></button>
           </>
         ) : (
-          <button className="booster-text-button" onClick={() => setRevealAll(true)} disabled={revealAll}><ScanLine aria-hidden="true" />{revealAll ? 'Karten werden aufgedeckt …' : 'Alle Karten aufdecken'}</button>
+          <p>Wähle eine Karte und tippe sie zum Aufdecken an.</p>
         )}
       </div>
     </div>
   )
 }
 
-function CardSleeve() {
-  return (
-    <span className="booster-sleeve">
-      <span className="booster-sleeve__serial">MQ / STREET ARCHIVE</span>
-      <span className="booster-sleeve__emblem"><Crown /><strong>MQ</strong><span>FUNDSTÜCK</span></span>
-      <span className="booster-sleeve__tap"><ScanLine /> ZUM AUFDECKEN TIPPEN</span>
-    </span>
-  )
-}
-
-function ShatterCard({ card, index, revealAll, onRevealed }: { card: Card; index: number; revealAll: boolean; onRevealed: () => void }) {
-  const [phase, setPhase] = useState<'covered' | 'shattering' | 'revealed'>('covered')
+function CardReveal({ card }: { card: Card }) {
+  const [shattering, setShattering] = useState(true)
   const reduceMotion = useReducedMotion()
-  const onRevealedRef = useRef(onRevealed)
-  onRevealedRef.current = onRevealed
-
-  useEffect(() => {
-    if (!revealAll || phase !== 'covered') return
-    const timer = window.setTimeout(() => setPhase('shattering'), reduceMotion ? 0 : index * 110)
-    return () => window.clearTimeout(timer)
-  }, [revealAll, phase, index, reduceMotion])
-
-  useEffect(() => {
-    if (phase !== 'shattering') return
-    const timer = window.setTimeout(() => {
-      setPhase('revealed')
-      onRevealedRef.current()
-    }, reduceMotion ? 40 : 700)
-    return () => window.clearTimeout(timer)
-  }, [phase, reduceMotion])
+  const animate = shattering && !reduceMotion
 
   return (
-    <div className={`booster-card-slot booster-card-slot--${phase}`} style={{ '--card-delay': `${index * 65}ms` } as CSSProperties}>
-      {phase !== 'covered' && <div className="booster-card-front" aria-hidden={phase !== 'revealed'}><StreetCard card={card} /></div>}
-      {phase === 'covered' && (
-        <button className="booster-covered-card" onClick={() => setPhase('shattering')} aria-label={`Karte ${index + 1} aufdecken`}>
-          <CardSleeve />
-          <span className="booster-card-number">{String(index + 1).padStart(2, '0')}</span>
-        </button>
-      )}
-      {phase === 'shattering' && (
-        <div className="booster-shatter" aria-hidden="true">
+    <>
+      <span
+        className={`booster-card-front${animate ? ' is-materializing' : ''}`}
+        onAnimationEnd={event => {
+          if (event.target === event.currentTarget && event.animationName === 'booster-card-materialize') setShattering(false)
+        }}
+      ><StreetCard card={card} /></span>
+      {animate && (
+        <span className="booster-shatter">
           {FRACTURE_EDGE.map((edge, piece) => {
             const next = FRACTURE_EDGE[(piece + 1) % FRACTURE_EDGE.length]
             return (
@@ -110,30 +119,18 @@ function ShatterCard({ card, index, revealAll, onRevealed }: { card: Card; index
             )
           })}
           <span className="booster-glitch-line" />
-        </div>
+        </span>
       )}
-    </div>
+    </>
   )
 }
 
-function StreetCard({ card }: { card: Card }) {
+function CardSleeve() {
   return (
-    <article className={`street-card street-card--${card.rarity}`} aria-label={`${card.name}, ${getRarityLabel(card.rarity)}`}>
-      <div className="street-card__image">
-        <img src={card.image_url || '/art/street-mattress.svg'} alt={card.image_url ? card.name : 'Illustrierte Straßenmatratze als Beispielmotiv'} />
-        <span className="street-card__topline"><Crown /><span>MQ / STREET FINDS</span><Crown /></span>
-        <span className="street-card__rarity">{getRarityLabel(card.rarity)}</span>
-        {!card.image_url && <span className="street-card__sample">DEMO ART</span>}
-      </div>
-      <div className="street-card__info">
-        <h2>{card.name}</h2>
-        <p><MapPin aria-hidden="true" />{card.city}<span> / {card.country}</span></p>
-        <dl>{Object.entries(STAT_LABELS).map(([key, label]) => {
-          const value = card.stats[key as keyof CardStats]
-          return <div key={key}><dt>{label}</dt><dd><span className="street-card__meter" aria-hidden="true"><i style={{ width: `${value}%` }} /></span><b>{value}</b></dd></div>
-        })}</dl>
-      </div>
-      <footer className="street-card__footer"><span>MATRATZEN QUARTETT</span><span>{card.edition_number ? `#${card.edition_number}/${card.total_editions ?? '–'}` : 'VOL. 01'}</span></footer>
-    </article>
+    <span className="booster-sleeve">
+      <span className="booster-sleeve__serial">MQ / STREET ARCHIVE</span>
+      <span className="booster-sleeve__emblem"><Crown /><strong>MQ</strong><span>FUNDSTÜCK</span></span>
+      <span className="booster-sleeve__tap"><ScanLine /> ZUM AUFDECKEN TIPPEN</span>
+    </span>
   )
 }

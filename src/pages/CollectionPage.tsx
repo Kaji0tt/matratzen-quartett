@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Search, SlidersHorizontal, Star } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { ArrowRight, Check, Search, SlidersHorizontal, Layers, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { CardDisplay } from '@/components/cards/CardDisplay'
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import { StreetCard } from '@/components/cards/StreetCard'
+import { StreetPageHeader } from '@/components/layout/StreetPageHeader'
 import { useDemoGameStore } from '@/store/demo-game-store'
 
 import type { Card, Rarity } from '@/types'
@@ -105,93 +107,66 @@ export function CollectionPage() {
     .sort((a, b) => rarityOrder[b.rarity] - rarityOrder[a.rarity])
 
   return (
-    <div className="container mx-auto px-4 pt-8 pb-20">
-      <p className="mb-6 text-center text-xs text-amber-300">
-        Demo-Sammlung: Booster-Karten und lokal eingereichte Demo-Karten bleiben in diesem Browser.
-      </p>
-      {/* Filters expand upward above the search bar. */}
-      <div className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] left-0 right-0 z-40 flex flex-col-reverse gap-3 px-4">
-        <div className="flex w-full gap-3 max-w-xl mx-auto">
-          {/* Search pill */}
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="relative min-w-0 flex-1"
-            style={{
-              background: 'rgba(255,255,255,0.08)',
-              backdropFilter: 'blur(24px) saturate(180%)',
-              WebkitBackdropFilter: 'blur(24px) saturate(180%)',
-              borderRadius: '9999px',
-              border: '1px solid rgba(255,255,255,0.18)',
-              boxShadow: '0 4px 24px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.12)',
-            }}
-          >
+    <div className="street-screen collection-screen">
+      <StreetPageHeader first="Deine" accent="Sammlung" subtitle="Fundstücke mit Geschichte. Dein Street-Archiv." />
+      <section className="home-panel collection-overview" aria-label="Sammlungsfortschritt">
+        <div>
+          <span className="home-brush-label home-brush-label--small">STREET ARCHIVE</span>
+          <h2>{ownedIds.size} <span>/ {cards.length} Karten</span></h2>
+          <p>Schon gesichert. Der nächste Fund wartet.</p>
+          <div className="collection-progress" role="progressbar" aria-label="Karten im Besitz" aria-valuenow={ownedIds.size} aria-valuemin={0} aria-valuemax={cards.length}>
+            <span style={{ width: `${ownedIds.size / cards.length * 100}%` }} />
+          </div>
+        </div>
+        <Link to="/boosters" className="home-cta">Booster entdecken<ArrowRight aria-hidden="true" /></Link>
+        <Layers className="collection-overview__icon" aria-hidden="true" />
+      </section>
+      <p className="street-demo-note">Demo-Sammlung · Booster-Karten und eigene Demo-Funde bleiben in diesem Browser.</p>
+      <section className="collection-toolbar" aria-label="Sammlung durchsuchen">
+        <div className="collection-search-row">
+          <div className="relative min-w-0 flex-1">
             <Search aria-hidden="true" className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/50" />
             <Input
               aria-label="Karte oder Stadt suchen"
               placeholder="Karte oder Stadt suchen..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-14 pl-12 text-base bg-transparent border-none rounded-full text-white placeholder:text-white/40 focus-visible:ring-2 focus-visible:ring-purple-400 focus-visible:ring-offset-0"
+              className="collection-search h-12 pl-12 text-base text-white placeholder:text-white/40 focus-visible:ring-purple-400"
             />
-          </motion.div>
+          </div>
 
           {/* Filter button */}
-          <motion.button
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
+          <button
             onClick={() => setFilterOpen(o => !o)}
             aria-label="Kartenfilter"
             aria-expanded={filterOpen}
             aria-controls="collection-filters"
-            className="relative flex-shrink-0 w-14 h-14 flex items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-purple-400"
-            style={{
-              background: isFiltered ? 'rgba(139,92,246,0.35)' : 'rgba(255,255,255,0.08)',
-              backdropFilter: 'blur(24px) saturate(180%)',
-              WebkitBackdropFilter: 'blur(24px) saturate(180%)',
-              borderRadius: '9999px',
-              border: isFiltered ? '1px solid rgba(139,92,246,0.6)' : '1px solid rgba(255,255,255,0.18)',
-              boxShadow: '0 4px 24px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.12)',
-            }}
+            className={`street-filter-toggle${filterOpen || isFiltered ? ' is-active' : ''}`}
           >
-            <SlidersHorizontal aria-hidden="true" className="w-5 h-5 text-white/70" />
-            {isFiltered && (
-              <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-purple-400 rounded-full" />
-            )}
-          </motion.button>
+            <SlidersHorizontal aria-hidden="true" className="w-4 h-4" />
+            Filter{isFiltered ? ' · aktiv' : ''}
+          </button>
         </div>
 
         {/* Filter panel */}
-        <AnimatePresence>
           {filterOpen && (
-            <motion.div
+            <div
               id="collection-filters"
-              initial={{ opacity: 0, y: -8, scale: 0.97 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -8, scale: 0.97 }}
-              transition={{ duration: 0.18 }}
-              className="w-full max-w-xl mx-auto max-h-[calc(100dvh-env(safe-area-inset-bottom,0px)-12rem)] overflow-y-auto p-4 space-y-4"
-              style={{
-                background: 'rgba(15,15,25,0.75)',
-                backdropFilter: 'blur(32px) saturate(180%)',
-                WebkitBackdropFilter: 'blur(32px) saturate(180%)',
-                borderRadius: '1.25rem',
-                border: '1px solid rgba(255,255,255,0.12)',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08)',
-              }}
+              className="collection-filters space-y-4"
             >
               {/* Rarität */}
               <div>
                 <p className="text-xs font-semibold text-white/40 uppercase tracking-widest mb-2">Rarität</p>
                 <div className="flex flex-wrap gap-1.5">
                   {RARITY_CONFIG.map(({ value, label, color }) => {
-                    const count = value === 'all' ? DEMO_CARDS.length : DEMO_CARDS.filter(c => c.rarity === value).length
+                    const count = value === 'all' ? cards.length : cards.filter(c => c.rarity === value).length
                     const active = filterRarity === value
                     return (
                       <button
                         key={value}
+                        aria-pressed={active}
                         onClick={() => setFilterRarity(value)}
-                        className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                        className={`min-h-11 px-3 py-1 rounded-full text-xs font-medium transition-all ${
                           active
                             ? 'bg-white/20 ring-1 ring-white/40'
                             : 'bg-white/5 hover:bg-white/10'
@@ -214,8 +189,9 @@ export function CollectionPage() {
                     return (
                       <button
                         key={value}
+                        aria-pressed={active}
                         onClick={() => setFilterOwned(value)}
-                        className={`flex-1 py-1.5 rounded-full text-xs font-medium transition-all ${
+                        className={`flex-1 min-h-11 py-1.5 rounded-full text-xs font-medium transition-all ${
                           active
                             ? 'bg-white/20 text-white ring-1 ring-white/40'
                             : 'bg-white/5 text-white/50 hover:bg-white/10'
@@ -227,40 +203,42 @@ export function CollectionPage() {
                   })}
                 </div>
               </div>
-            </motion.div>
+            </div>
           )}
-        </AnimatePresence>
-      </div>
+      </section>
 
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+      <div className="collection-results">
+        <div className="street-section-heading">
+          <h2>Deine Fundstücke</h2>
+          <span role="status">{filtered.length} Karten{search || isFiltered ? ' gefunden' : ' im Archiv'}</span>
+        </div>
         {/* Cards Grid */}
         {filtered.length === 0 ? (
-          <div className="text-center py-20 text-muted-foreground">
-            <div className="text-5xl mb-4">🔍</div>
-            <p>Keine Karten gefunden.</p>
+          <div className="home-panel collection-empty">
+            <Search aria-hidden="true" />
+            <h3>Hier liegt noch nichts.</h3>
+            <p>Keine Karten für diese Suche gefunden.</p>
+            <button className="street-secondary" onClick={() => { setSearch(''); setFilterRarity('all'); setFilterOwned('all') }}>Suche zurücksetzen<X aria-hidden="true" /></button>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {filtered.map((card, i) => (
-              <motion.div
-                key={card.id}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: i * 0.04 }}
-              >
-                <CardDisplay
-                  card={card}
-                  size="md"
+          <div className="collection-grid">
+            {filtered.map((card) => (
+              <div key={card.id} className="collection-item">
+                <button className="collection-card" aria-label={`${card.name}, ${ownedIds.has(card.id) ? 'im Besitz' : 'fehlt noch'} – Details ansehen`}
                   onClick={() => {
                     track('card_viewed', { card_id: card.id, rarity: card.rarity })
                     setSelectedCard(card)
                   }}
-                />
-              </motion.div>
+                ><StreetCard card={card} /></button>
+                <span className={`collection-ownership${ownedIds.has(card.id) ? ' is-owned' : ''}`}>
+                  {ownedIds.has(card.id) ? <Check aria-hidden="true" /> : <span aria-hidden="true">+</span>}
+                  {ownedIds.has(card.id) ? 'Im Besitz' : 'Fehlt noch'}
+                </span>
+              </div>
             ))}
           </div>
         )}
-      </motion.div>
+      </div>
 
       {/* Card detail modal */}
       {selectedCard && (
@@ -275,23 +253,13 @@ export function CollectionPage() {
 
 function CardDetailModal({ card, onClose }: { card: Card; onClose: () => void }) {
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
-      onClick={onClose}
-    >
-      <motion.div
-        initial={{ scale: 0.9, y: 20 }}
-        animate={{ scale: 1, y: 0 }}
-        onClick={(e) => e.stopPropagation()}
-        className="flex flex-col sm:flex-row gap-6 bg-card border border-border rounded-2xl p-6 max-w-lg w-full"
-      >
-        <CardDisplay card={card} size="lg" showStats={true} />
+    <Dialog open onOpenChange={(open) => { if (!open) onClose() }}>
+      <DialogContent className="street-card-dialog">
+        <div className="collection-detail-card"><StreetCard card={card} /></div>
         <div className="flex flex-col justify-between flex-1">
           <div>
-            <h2 className="text-xl font-bold text-white mb-1">{card.name}</h2>
-            <p className="text-sm text-muted-foreground mb-4">{card.description}</p>
+            <DialogTitle className="text-xl font-bold text-white mb-1">{card.name}</DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground mb-4">{card.description}</DialogDescription>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Stadt</span>
@@ -312,16 +280,12 @@ function CardDetailModal({ card, onClose }: { card: Card; onClose: () => void })
             </div>
           </div>
           <div className="flex gap-2 mt-4">
-            <Button variant="outline" size="sm" className="gap-1">
-              <Star className="w-3.5 h-3.5" />
-              Favorit
-            </Button>
             <Button variant="ghost" size="sm" onClick={onClose}>
               Schließen
             </Button>
           </div>
         </div>
-      </motion.div>
-    </motion.div>
+      </DialogContent>
+    </Dialog>
   )
 }

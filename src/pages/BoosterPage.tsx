@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState, type PointerEvent } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react'
 import { useReducedMotion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { Coins, Crown, Plus, Zap } from 'lucide-react'
 import { BoosterOpening } from '@/components/booster/BoosterOpening'
+import { useBoosterCarousel } from '@/components/booster/use-booster-carousel'
 import { PlayingCards } from '@/components/ui/playing-cards'
 import { useDemoGameStore } from '@/store/demo-game-store'
 import { toast } from '@/hooks/use-toast'
@@ -41,26 +42,10 @@ const BOOSTERS: BoosterPack[] = [
 ]
 
 const PACK_STYLES = ['cyan', 'violet', 'pink', 'gold'] as const
-type Phase = 'selecting' | 'opening' | 'revealing'
+type Phase = 'selecting' | 'opening' | 'charging' | 'burst' | 'revealing'
+const GRID_FLIGHT_MS = 620
 
-function getNearestPackIndex(carousel: HTMLDivElement) {
-  const width = carousel.clientWidth
-  const scrollLeft = carousel.scrollLeft
-  let nearestIndex = 0
-  let nearestDistance = Infinity
-  Array.from(carousel.children).forEach((slot, index) => {
-    if (!(slot instanceof HTMLElement)) return
-    const center = slot.offsetLeft + slot.offsetWidth / 2
-    const distance = center - scrollLeft - width / 2
-    if (Math.abs(distance) < nearestDistance) {
-      nearestDistance = Math.abs(distance)
-      nearestIndex = index
-    }
-  })
-  return nearestIndex
-}
-
-function RetrowaveScene() {
+function RetrowaveScene({ onHorizonReached }: { onHorizonReached: () => void }) {
   return (
     <div className="booster-retrowave" aria-hidden="true">
       <svg className="booster-retrowave__stars" viewBox="0 0 1000 180" preserveAspectRatio="none">
@@ -97,6 +82,20 @@ function RetrowaveScene() {
               />
             ))}
           </g>
+          <g
+            className="booster-retrowave__opening-impulses"
+            onAnimationEnd={event => {
+              if (event.animationName === 'booster-grid-opening-impulse' && event.target === event.currentTarget.firstElementChild) onHorizonReached()
+            }}
+          >
+            {Array.from({ length: 21 }, (_, ray) => (
+              <path
+                key={ray}
+                d={`M${-1500 + ray * 200} 400L${440 + ray * 6} 0`}
+                pathLength="100"
+              />
+            ))}
+          </g>
         </svg>
       </div>
     </div>
@@ -104,12 +103,10 @@ function RetrowaveScene() {
 }
 
 export function BoosterPage() {
-  const [activeIndex, setActiveIndex] = useState(0)
-  const [isCarouselMoving, setIsCarouselMoving] = useState(false)
   const [phase, setPhase] = useState<Phase>('selecting')
+  const { carouselRef, activeIndex, setActiveIndex, isCarouselMoving, selectItem: selectPack } = useBoosterCarousel(phase === 'selecting')
   const [cards, setCards] = useState<Card[]>([])
   const purchaseLock = useRef(false)
-  const carouselRef = useRef<HTMLDivElement>(null)
   const pullStart = useRef<{ x: number; y: number; pointerId: number; pulling: boolean; maxDistance: number } | null>(null)
   const suppressClick = useRef(false)
   const pressedSelectedPack = useRef(false)
@@ -119,19 +116,6 @@ export function BoosterPage() {
   const openBooster = useDemoGameStore((state) => state.openBooster)
   const selected = BOOSTERS[activeIndex]
   const canAfford = coins >= selected.price_coins
-
-  const selectPack = (index: number) => {
-    const carousel = carouselRef.current
-    const item = carousel?.children[index]
-    if (!carousel || !(item instanceof HTMLElement)) return
-    const left = item.offsetLeft + item.offsetWidth / 2 - carousel.clientWidth / 2
-    if (Math.abs(carousel.scrollLeft - left) > 1) setIsCarouselMoving(true)
-    carousel.scrollTo({
-      left,
-      behavior: reduceMotion ? 'instant' : 'smooth',
-    })
-    setActiveIndex(index)
-  }
 
   const handlePullStart = (event: PointerEvent<HTMLButtonElement>, index: number) => {
     suppressClick.current = false
@@ -151,10 +135,10 @@ export function BoosterPage() {
     if (!purchaseLock.current) {
       target.style.removeProperty('--pack-pull')
       stage?.style.removeProperty('--snap-pull')
+      stage?.style.removeProperty('--pull-progress')
     }
     target.classList.remove('is-pulling')
     stage?.classList.remove('is-pulling')
-    stage?.style.removeProperty('--pull-progress')
   }
 
   const handlePullMove = (event: PointerEvent<HTMLButtonElement>) => {
@@ -191,82 +175,12 @@ export function BoosterPage() {
   }
 
   useEffect(() => {
-    const carousel = carouselRef.current
-    if (!carousel || phase !== 'selecting') return
-    let frame: number | null = null
-    let settleTimer: number | undefined
-    let pointer: { id: number; x: number; y: number; swiping: boolean } | null = null
-    const settle = () => {
-      window.clearTimeout(settleTimer)
-      if (pointer?.swiping) return
-      const index = getNearestPackIndex(carousel)
-      const slot = carousel.children[index]
-      if (!(slot instanceof HTMLElement)) return
-      const distance = slot.offsetLeft + slot.offsetWidth / 2 - carousel.scrollLeft - carousel.clientWidth / 2
-      setActiveIndex(index)
-      setIsCarouselMoving(Math.abs(distance) > 1)
-    }
-    const scheduleSettle = () => {
-      window.clearTimeout(settleTimer)
-      settleTimer = window.setTimeout(settle, 180)
-    }
-    const update = () => {
-      if (frame !== null) return
-      frame = window.requestAnimationFrame(() => {
-        frame = null
-        setActiveIndex(getNearestPackIndex(carousel))
-      })
-    }
-    const handleScroll = () => {
-      setIsCarouselMoving(true)
-      update()
-      scheduleSettle()
-    }
-    const handlePointerDown = (event: globalThis.PointerEvent) => {
-      if (!event.isPrimary || event.button !== 0) return
-      pointer = { id: event.pointerId, x: event.clientX, y: event.clientY, swiping: false }
-    }
-    const handlePointerMove = (event: globalThis.PointerEvent) => {
-      if (!pointer || pointer.id !== event.pointerId) return
-      const dx = Math.abs(event.clientX - pointer.x)
-      const dy = Math.abs(event.clientY - pointer.y)
-      if (dx > 8 && dx > dy) {
-        pointer.swiping = true
-        window.clearTimeout(settleTimer)
-        setIsCarouselMoving(true)
-      }
-    }
-    const handlePointerEnd = (event: globalThis.PointerEvent) => {
-      if (!pointer || pointer.id !== event.pointerId) return
-      pointer = null
-      scheduleSettle()
-    }
-    const observer = new ResizeObserver(update)
-    observer.observe(carousel)
-    carousel.addEventListener('scroll', handleScroll, { passive: true })
-    carousel.addEventListener('scrollend', settle)
-    carousel.addEventListener('pointerdown', handlePointerDown, { passive: true })
-    carousel.addEventListener('pointermove', handlePointerMove, { passive: true })
-    window.addEventListener('pointerup', handlePointerEnd)
-    window.addEventListener('pointercancel', handlePointerEnd)
-    update()
-    settle()
-    return () => {
-      observer.disconnect()
-      carousel.removeEventListener('scroll', handleScroll)
-      carousel.removeEventListener('scrollend', settle)
-      carousel.removeEventListener('pointerdown', handlePointerDown)
-      carousel.removeEventListener('pointermove', handlePointerMove)
-      window.removeEventListener('pointerup', handlePointerEnd)
-      window.removeEventListener('pointercancel', handlePointerEnd)
-      window.clearTimeout(settleTimer)
-      if (frame !== null) window.cancelAnimationFrame(frame)
-    }
-  }, [phase])
-
-  useEffect(() => {
-    if (phase !== 'opening') return
-    const timer = window.setTimeout(() => setPhase('revealing'), reduceMotion ? 80 : 780)
+    if (phase !== 'opening' && phase !== 'charging' && phase !== 'burst') return
+    const nextPhase = phase === 'opening' ? 'charging' : phase === 'charging' ? 'burst' : 'revealing'
+    // Animation completion drives the impact; keep a timeout if motion is disabled mid-flight.
+    const duration = reduceMotion || window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      ? 40 : phase === 'opening' ? 180 : phase === 'charging' ? GRID_FLIGHT_MS + 100 : 560
+    const timer = window.setTimeout(() => setPhase(nextPhase), duration)
     return () => window.clearTimeout(timer)
   }, [phase, reduceMotion])
 
@@ -320,8 +234,13 @@ export function BoosterPage() {
         </Link>
       </header>
 
-      <section className={`booster-stage booster-stage--${phase}`} aria-label="Booster-Bühne" aria-busy={phase === 'opening'}>
-        <RetrowaveScene />
+      <section
+        className={`booster-stage booster-stage--${phase}`}
+        style={{ '--grid-flight': `${GRID_FLIGHT_MS}ms` } as CSSProperties}
+        aria-label="Booster-Bühne"
+        aria-busy={phase !== 'selecting' && phase !== 'revealing'}
+      >
+        <RetrowaveScene onHorizonReached={() => setPhase(previous => previous === 'charging' ? 'burst' : previous)} />
         {phase !== 'revealing' ? (
           <>
             <div className={`booster-snap-overlay booster-tone--${PACK_STYLES[activeIndex]}${isCarouselMoving ? ' is-moving' : ''}`} aria-hidden="true">
@@ -329,6 +248,9 @@ export function BoosterPage() {
             </div>
             <div className="booster-floor-line" aria-hidden="true">
               <div className="booster-floor-line__glow" />
+              {Array.from({ length: 7 }, (_, index) => (
+                <span className="booster-floor-line__ray" key={index} />
+              ))}
             </div>
             <p id="booster-instructions" className="sr-only">Wische oder nutze die Pfeiltasten, um ein Pack auszuwählen. Tippe das mittige Pack erneut an oder ziehe es nach unten zur violett leuchtenden Grid-Linie, um es zum aufgedruckten Preis zu öffnen. Die Drop-Gewichte pro zufälliger Karte stehen in der Pack-Beschreibung.</p>
             <div ref={carouselRef} className="booster-pack-grid" role="group" aria-label="Booster-Pack auswählen">
@@ -382,7 +304,7 @@ export function BoosterPage() {
                 </div>
               ))}
             </div>
-            {phase === 'opening' && <span className="sr-only" role="status">Pack wird geöffnet</span>}
+            {phase !== 'selecting' && <span className="sr-only" role="status">Pack wird geöffnet</span>}
           </>
         ) : <BoosterOpening cards={cards} onComplete={handleComplete} />}
       </section>

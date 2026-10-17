@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { SubmissionCamera } from '@/components/cards/SubmissionCamera'
+import { ImageCropper } from '@/components/cards/ImageCropper'
 import { StatInputs } from '@/components/cards/StatInputs'
 import { supabase } from '@/lib/supabase'
 import { errorMessage, submissionAction } from '@/lib/submissions'
@@ -19,6 +20,8 @@ export function SubmitCardPage() {
   const { user, isLoading } = useAuthStore()
   const [step, setStep] = useState(0)
   const [photo, setPhoto] = useState<File | null>(null)
+  const [source, setSource] = useState<File | null>(null)
+  const [cropping, setCropping] = useState(false)
   const [preview, setPreview] = useState('')
   const [capturedAt, setCapturedAt] = useState('')
   const [stats, setStats] = useState({ ...DEFAULT_STATS })
@@ -52,7 +55,7 @@ export function SubmitCardPage() {
   </div>
 
   async function submit() {
-    if (!user || !photo || !consent || submitting.current) return
+    if (!user || !photo || cropping || !consent || submitting.current) return
     submitting.current = true
     setBusy(true)
     try {
@@ -100,10 +103,14 @@ export function SubmitCardPage() {
     </ol>
     <section className="rounded-xl border border-purple-400/25 bg-slate-950/70 p-5 space-y-5">
       <h2 className="text-lg font-semibold">{STEPS[step]}</h2>
-      {step === 0 && (photo ? <div className="space-y-4">
+      {step === 0 && (cropping && source ? <ImageCropper source={source} outputType="image/jpeg"
+        onApply={(file) => { setPhoto(file); setCropping(false) }}
+        onCancel={() => { setCropping(false); if (!photo) setSource(null) }} />
+        : photo ? <div className="space-y-4">
         {preview && <img src={preview} alt="Dein frisches Matratzenfoto" className="max-h-96 w-full rounded-lg object-contain" />}
-        <Button variant="outline" disabled={uploaded.current} onClick={() => setPhoto(null)}>Neu aufnehmen</Button>
-      </div> : <SubmissionCamera onCapture={(file, date) => { setPhoto(file); setCapturedAt(date) }} />)}
+        <Button variant="outline" disabled={uploaded.current} onClick={() => setCropping(true)}>Ausschnitt ändern</Button>
+        <Button variant="outline" disabled={uploaded.current} onClick={() => { setPhoto(null); setSource(null) }}>Neu aufnehmen</Button>
+      </div> : <SubmissionCamera onCapture={(file, date) => { setSource(file); setCapturedAt(date); setCropping(true) }} />)}
       {step === 1 && <>
         <p className="text-sm text-muted-foreground">Deine Wunschwerte, nicht die finalen Stats. Die KI prüft sie auf Plausibilität und Spielbalance; die Moderation entscheidet abschließend.</p>
         <StatInputs value={stats} onChange={setStats} />
@@ -136,7 +143,7 @@ export function SubmitCardPage() {
     </section>
     <div className="flex justify-between gap-3">
       <Button variant="outline" disabled={step === 0 || busy} onClick={() => setStep(step - 1)}>Zurück</Button>
-      {step < 2 ? <Button disabled={!photo} onClick={() => setStep(step + 1)}>Weiter</Button>
+      {step < 2 ? <Button disabled={!photo || cropping} onClick={() => setStep(step + 1)}>Weiter</Button>
         : <Button disabled={!detailsValid || busy} onClick={submit}>{busy ? 'Wird gespeichert …' : 'Fund einreichen'}</Button>}
     </div>
     <Link className="block text-sm text-purple-300 underline" to="/submissions">Meine Einreichungen ansehen</Link>

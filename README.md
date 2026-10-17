@@ -183,7 +183,7 @@ Die SQL-Migrationen stehen in `supabase/migrations/` in numerischer Reihenfolge.
 
 ### Matratzen einreichen, KI-Prüfung und Freigabe
 
-`/submit` verlangt eine Anmeldung und führt durch **Live-Kamera → Stat-Vorschläge → Funddetails**. Es gibt weder Galerie-/Dateiupload noch Demo-Einreichungen. Die Kamera benötigt HTTPS (oder localhost) und eine Kameraberechtigung. Das Foto wird direkt als JPEG mit maximal 1600 Pixel Kantenlänge und 5 MB gespeichert; Canvas entfernt dabei ursprüngliche EXIF-Metadaten. Ohne Kamera bleibt die Einreichung gesperrt. Eine Web-App kann manipulierte API-Clients nicht beweissicher als echte Kameraaufnahmen authentifizieren.
+`/submit` verlangt eine Anmeldung und führt durch **Live-Kamera mit Bildausschnitt → Stat-Vorschläge → Funddetails**. Es gibt weder Galerie-/Dateiupload noch Demo-Einreichungen. Die Kamera benötigt HTTPS (oder localhost) und eine Kameraberechtigung. Nach der Aufnahme lässt sich der Ausschnitt per Ziehen oder Regler verschieben und zoomen; wählbar sind Originalformat, 4:3, 1:1 und 3:4. Erst nach **Ausschnitt übernehmen** ist der nächste Schritt möglich. Der bestätigte Ausschnitt wird als JPEG mit maximal 1600 Pixel Kantenlänge und 5 MB gespeichert; Canvas entfernt dabei ursprüngliche EXIF-Metadaten. Vor dem Upload lässt sich aus derselben Originalaufnahme erneut zuschneiden oder neu fotografieren; nach erfolgreichem Upload bleiben Bildänderungen für diesen Einreichungsversuch gesperrt. Der Aufnahmezeitpunkt bleibt beim Zuschneiden erhalten. Ohne Kamera bleibt die Einreichung gesperrt. Eine Web-App kann manipulierte API-Clients nicht beweissicher als echte Kameraaufnahmen authentifizieren.
 
 Funddetails fragen Stadt, Viertel/Fundort, Land, Funddatum, Zustand sowie Stichpunkte zu Auffälligkeiten, Umgebung und optional zur Fundgeschichte ab. Keine Personen, Kennzeichen, privaten Adressen oder vertraulichen Inhalte aufnehmen. Vor dem Absenden ist die Zustimmung zur Veröffentlichung und KI-Verarbeitung erforderlich.
 
@@ -241,7 +241,8 @@ Admins und Moderatoren sehen im Profilmenü unterhalb eines Trennstrichs den Abs
 
 Der Editor ermöglicht:
 
-- PNG-Dateien bis **5 MB** hochzuladen und bestehende Kartenbilder durch ein neues PNG zu ersetzen; die Oberfläche prüft PNG-Signatur und Dekodierbarkeit;
+- PNG- und JPG/JPEG-Dateien bis **5 MB** auszuwählen; die Oberfläche prüft Dateisignatur, MIME-Typ und Dekodierbarkeit und verlangt einen bestätigten Bildausschnitt;
+- Ausschnitte per Ziehen oder per tastaturbedienbaren Reglern zu verschieben und zu zoomen, im Originalformat, in 4:3, 1:1 oder 3:4; auch bestehende Kartenbilder lassen sich neu zuschneiden;
 - Name, Beschreibung, Fundort, Stadt, Land, Zustand, Seltenheit, alle fünf Stats und optionale Notizen manuell zu setzen;
 - einen registrierten, nicht gesperrten Spieler nach Benutzername zu suchen und optional als Besitzer auszuwählen;
 - zuvor im Editor erstellte Karten paginiert wiederzufinden und zu bearbeiten.
@@ -262,7 +263,9 @@ Andere Kopien derselben Karte, beispielsweise aus Boostern, bleiben bei jedem Be
 
 Die Migrationen `20261017212221_manual_card_editor.sql` und `20261017212724_manual_card_optional_owner.sql` wurden im verknüpften Supabase-Projekt eingerichtet. `manual_card_entries` verknüpft jede manuelle Karte mit einer eindeutigen `user_cards.manual_entry_id`. Der geschützte RPC `save_manual_card` speichert Kartendaten, Besitzwechsel, Sammlungszähler und Benachrichtigungen atomar. Eine Versionsnummer verhindert das Überschreiben parallel bearbeiteter Stände; bei Konflikten den Editor schließen, **Liste neu laden** wählen und den aktuellen Eintrag erneut öffnen. Auch nach unklarem Netzwerkfehler erst den gespeicherten Stand prüfen, statt eine zweite Karte anzulegen.
 
-PNGs liegen im öffentlichen Bucket `manual-card-images`. Nur Admins und Moderatoren dürfen neue Dateien hochladen. Bilder sind nach dem Upload unveränderlich; ein Bildwechsel erzeugt einen neuen Dateipfad. Ältere beziehungsweise nach Abbruch ungenutzte Uploads werden nicht automatisch gelöscht. Keine privaten Daten und nur eigene oder zur Verwendung freigegebene Bilder hochladen. Es wird kein OpenAI-Key für diesen Editor benötigt.
+Die bestätigten Ausschnitte liegen als PNGs im öffentlichen Bucket `manual-card-images`, auch bei einer JPG/JPEG-Quelldatei. Die Umwandlung im Browser entfernt Metadaten, erhält PNG-Transparenz und begrenzt die Ausgabe auf maximal 1600 Pixel Kantenlänge und 5 MB; bei zu großer PNG-Ausgabe wird die Auflösung weiter reduziert. Der bestehende PNG-Speichervertrag bleibt unverändert, eine zusätzliche Supabase-Migration ist dafür nicht nötig. Vor dem Speichern bleibt die ausgewählte Originaldatei für erneutes Zuschneiden erhalten; Abbrechen verändert weder den bestätigten Ausschnitt noch die Besitzzuordnung. Nur Admins und Moderatoren dürfen neue Dateien hochladen. Bilder sind nach dem Upload unveränderlich; ein Bildwechsel erzeugt einen neuen Dateipfad. Ältere beziehungsweise nach Abbruch ungenutzte Uploads werden nicht automatisch gelöscht. Keine privaten Daten und nur eigene oder zur Verwendung freigegebene Bilder hochladen. Es wird kein OpenAI-Key für diesen Editor benötigt.
+
+`npm run test:images` prüft die Ausschnittkoordinaten, Randfälle, Dateitypvalidierung, Ausgabeformate und Größenbegrenzungen (Node.js 22.18+ mit TypeScript-Type-Stripping erforderlich).
 
 Die lokale und gehostete SQL-Probe prüft Zugriffsschutz, Erstellung ohne Besitzer, Vergabe, wiederholtes Speichern, Besitzerwechsel, Leeren des Besitzers, nicht handelbare Editor-Kopien, unveränderte normale Kopien, Balancing und veraltete Bearbeitungsstände. Alle Testdaten werden zurückgerollt:
 

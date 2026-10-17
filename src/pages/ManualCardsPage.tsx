@@ -4,6 +4,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { StatInputs } from '@/components/cards/StatInputs'
+import { ImageCropper } from '@/components/cards/ImageCropper'
+import { validateCardImage } from '@/lib/image-crop'
 import { supabase } from '@/lib/supabase'
 import { errorMessage } from '@/lib/submissions'
 import { toast } from '@/hooks/use-toast'
@@ -56,7 +58,7 @@ function ManualCardsEditor() {
   }
   return <div className="container mx-auto max-w-3xl space-y-6 px-4 py-8">
     <header className="space-y-2"><h1 className="text-2xl font-bold">Manueller Karteneditor</h1>
-      <p className="text-sm text-muted-foreground">PNG hochladen, Werte setzen und optional genau eine fest zugeordnete Besitzkopie vergeben. Nur für Admins und Moderatoren.</p>
+      <p className="text-sm text-muted-foreground">PNG oder JPG/JPEG hochladen, Bildausschnitt wählen, Werte setzen und optional eine Besitzkopie vergeben. Nur für Admins und Moderatoren.</p>
       <Link to="/admin" className="inline-block text-sm text-purple-300 underline">Zur Administration</Link></header>
     {editing !== null ? <ManualCardForm key={editing === 'new' ? 'new' : `${editing.card_id}:${editing.revision}`}
       entry={editing === 'new' ? undefined : editing} onSaved={saved} onClose={() => setEditing(null)} />
@@ -105,6 +107,9 @@ function ManualCardForm({ entry, onSaved, onClose }: {
     id: entry.user_cards.user_id, username: entry.user_cards.profiles?.username ?? entry.user_cards.user_id,
   } : null)
   const [photo, setPhoto] = useState<File | null>(null)
+  const [source, setSource] = useState<Blob | null>(null)
+  const [cropSource, setCropSource] = useState<Blob | null>(null)
+  const cropping = cropSource !== null
   const [preview, setPreview] = useState(entry?.cards.image_url ?? '')
   const [busy, setBusy] = useState(false)
   const [imageError, setImageError] = useState('')
@@ -117,7 +122,7 @@ function ManualCardForm({ entry, onSaved, onClose }: {
   const total = Object.values(stats).reduce((sum, value) => sum + value, 0)
   const balanced = total <= 300 && Object.values(stats).filter((value) => value > 85).length <= 1
   const valid = name.trim().length >= 2 && description.trim().length >= 10 && city.trim().length >= 2
-    && location.trim().length >= 2 && /^[A-Z]{2}$/.test(country) && balanced && !validatingImage && !imageError
+    && location.trim().length >= 2 && /^[A-Z]{2}$/.test(country) && balanced && !validatingImage && !imageError && !cropping
     && (!!photo || !!entry?.image_path)
 
   useEffect(() => {
@@ -128,20 +133,34 @@ function ManualCardForm({ entry, onSaved, onClose }: {
   }, [photo])
   useEffect(() => () => { selecting.current += 1 }, [])
 
-  async function selectPng(file: File | undefined) {
+  async function selectImage(file: File | undefined) {
     const attempt = ++selecting.current
     if (!file) return
     setImageError('')
     setValidatingImage(true)
     try {
-      if (file.type !== 'image/png' || file.size === 0 || file.size > 5 * 1024 * 1024) throw new Error('Bitte ein PNG mit maximal 5 MB auswählen.')
-      const signature = new Uint8Array(await file.slice(0, 8).arrayBuffer())
-      if (![137, 80, 78, 71, 13, 10, 26, 10].every((value, index) => signature[index] === value)) throw new Error('Die Datei ist kein gültiges PNG.')
-      const image = await createImageBitmap(file)
-      image.close()
+      await validateCardImage(file)
       if (selecting.current === attempt) {
-        setPhoto(file)
-        uploaded.current = null
+        setCropSource(file)
+      }
+    } catch (err) {
+      if (selecting.current === attempt) setImageError(errorMessage(err))
+    } finally {
+      if (selecting.current === attempt) setValidatingImage(false)
+    }
+  }
+
+  async function editCrop() {
+    setImageError('')
+    if (source) { setCropSource(source); return }
+    if (!entry) return
+    const attempt = ++selecting.current
+    setValidatingImage(true)
+    try {
+      const { data, error } = await supabase.storage.from('manual-card-images').download(entry.image_path)
+      if (error) throw error
+      if (selecting.current === attempt) {
+        setCropSource(data)
       }
     } catch (err) {
       if (selecting.current === attempt) setImageError(errorMessage(err))
@@ -191,16 +210,22 @@ function ManualCardForm({ entry, onSaved, onClose }: {
     onSubmit={(event) => { event.preventDefault(); void save() }}>
     <h2 className="text-lg font-semibold">{entry ? 'Karte bearbeiten' : 'Neue Karte'}</h2>
     <fieldset disabled={busy} className="space-y-4">
-      <label className="block text-sm">Kartenbild (PNG, maximal 5 MB)
-        <input type="file" accept="image/png,.png" className="mt-2 block w-full text-sm" onChange={(event) => {
-          void selectPng(event.target.files?.[0])
+      <label className="block text-sm">Kartenbild (PNG oder JPG/JPEG, maximal 5 MB)
+        <input type="file" accept="image/png,image/jpeg,.png,.jpg,.jpeg" disabled={cropping} className="mt-2 block w-full text-sm" onChange={(event) => {
+          void selectImage(event.target.files?.[0])
           event.target.value = ''
         }} />
       </label>
-      <p className="text-xs text-muted-foreground">Das hochgeladene PNG ist öffentlich. Nur eigene oder zur Verwendung freigegebene Bilder ohne private Daten nutzen. Ein neues Bild ersetzt die Darstellung bei allen Kopien dieser Karte.</p>
+      <p className="text-xs text-muted-foreground">Der bestätigte Ausschnitt wird als PNG gespeichert und ist öffentlich. JPG/JPEG wird automatisch umgewandelt. Nur eigene oder freigegebene Bilder ohne private Daten nutzen. Änderungen gelten für alle Kopien dieser Karte.</p>
       {imageError && <p role="alert" className="text-sm text-red-300">{imageError}</p>}
-      {validatingImage && <p role="status" className="text-sm">PNG wird geprüft …</p>}
-      {preview && <img src={preview} alt="Kartenbild-Vorschau" className="max-h-80 w-full rounded-lg bg-black/30 object-contain" />}
+      {validatingImage && <p role="status" className="text-sm">Bild wird geladen und geprüft …</p>}
+      {cropSource ? <ImageCropper source={cropSource} outputType="image/png"
+        onApply={(file) => { setPhoto(file); setSource(cropSource); uploaded.current = null; setCropSource(null); setImageError('') }}
+        onCancel={() => { setCropSource(null); setImageError('') }} />
+        : <>
+          {preview && <img src={preview} alt="Kartenbild-Vorschau" className="max-h-80 w-full rounded-lg bg-black/30 object-contain" />}
+          {(source || entry) && <Button type="button" variant="outline" disabled={validatingImage} onClick={editCrop}>Ausschnitt ändern</Button>}
+        </>}
       <label className="block text-sm">Kartenname<Input required minLength={2} maxLength={80} value={name} onChange={(event) => setName(event.target.value)} /></label>
       <label className="block text-sm">Kartentext<textarea required minLength={10} maxLength={1000} className="mt-1 min-h-28 w-full rounded-lg border border-input bg-background p-3 text-sm" value={description} onChange={(event) => setDescription(event.target.value)} /></label>
       <div className="grid gap-4 sm:grid-cols-2">

@@ -10,7 +10,7 @@ export function Layout() {
       <main className="min-h-dvh pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)]">
         <Outlet />
       </main>
-      {pathname !== '/' && pathname !== '/collection' && (
+      {!['/', '/collection', '/auth', '/auth/register'].includes(pathname) && (
         <Link to="/" className="page-back" aria-label="Zurück zu Home" title="Zurück zu Home">
           <ArrowLeft aria-hidden="true" />
         </Link>

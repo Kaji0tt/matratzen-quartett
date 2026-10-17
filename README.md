@@ -117,7 +117,7 @@ Dokumentation: [Supabase MCP](https://supabase.com/docs/guides/ai-tools/mcp), [V
 
 ### Registrierung mit eigener E-Mail-Adresse
 
-Über das Profilmenü → „Registrieren“ oder direkt unter `/auth/register` können Nutzer einen Account mit Benutzername, eigener E-Mail-Adresse und Passwort erstellen. Das Passwort wird zur Kontrolle zweimal eingegeben. `/auth` bleibt die Anmeldung und verlinkt die Registrierung.
+Über das Profilmenü → „Registrieren“ oder direkt unter `/auth/register` können Nutzer einen Account mit Benutzername, eigener E-Mail-Adresse und Passwort erstellen. Registrierung und Anmeldung (`/auth`) öffnen als Modal über Home, nicht als separate Seite. Home bleibt beim Wechsel zwischen den Dialogen im Hintergrund erhalten. Der Dialog übernimmt Graffiti-Schrift, dunkle Neonflächen und violett-cyanfarbene Akzente der App. Auf kleinen oder niedrigen Displays scrollt der Inhalt innerhalb des Dialogs; Titel und Schließenknopf bleiben erreichbar. Escape, Schließenknopf und Klick auf den Hintergrund führen nach Home zurück. Fokus wird im Modal gehalten und nach dem Schließen zum Profilmenü zurückgegeben. Direkte Auth-Links und Bestätigungslinks bleiben unterstützt. Das Passwort wird zur Kontrolle zweimal eingegeben; Anmeldung und Registrierung sind gegenseitig verlinkt.
 
 Das Profilmenü zeigt Gästen ausschließlich „Anmelden“ und „Registrieren“. Angemeldete Nutzer sehen stattdessen das normale Menü mit Profil, Benachrichtigungen, Handel, Rangliste und Demo-Shop sowie gegebenenfalls Administration. Maßgeblich ist die aktuelle Anmeldung, nicht ein lokal gespeichertes Profil.
 

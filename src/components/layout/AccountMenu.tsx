@@ -30,7 +30,7 @@ export function AccountMenu() {
   return (
     <DropdownMenu.Root modal={false}>
       <DropdownMenu.Trigger asChild>
-        <button type="button" aria-label="Profil und weitere Funktionen" className="flex min-h-11 min-w-0 items-center gap-3 rounded-xl text-left outline-none focus-visible:ring-2 focus-visible:ring-purple-400">
+        <button id="account-menu-trigger" type="button" aria-label="Profil und weitere Funktionen" className="flex min-h-11 min-w-0 items-center gap-3 rounded-xl text-left outline-none focus-visible:ring-2 focus-visible:ring-purple-400">
           <span className="relative shrink-0">
             <Avatar.Root className="flex h-11 w-11 overflow-hidden rounded-full border border-sky-200/40 bg-gradient-to-br from-sky-500 to-purple-700 shadow-lg">
               <Avatar.Image src={profile?.avatar_url} alt="" className="h-full w-full object-cover" />

@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react'
-import { motion } from 'framer-motion'
-import { Link, Navigate } from 'react-router-dom'
-import { Mail, Lock, User, Loader2, MailCheck } from 'lucide-react'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
+import { Mail, Lock, User, Loader2, MailCheck, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { useAuthStore } from '@/store/auth-store'
 import { supabase } from '@/lib/supabase'
 import { toast } from '@/hooks/use-toast'
@@ -28,6 +27,7 @@ function getAuthErrorMessage(error: unknown): string {
 }
 
 export function AuthPage({ mode = 'login' }: { mode?: 'login' | 'register' }) {
+  const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [passwordConfirmation, setPasswordConfirmation] = useState('')
@@ -129,38 +129,36 @@ export function AuthPage({ mode = 'login' }: { mode?: 'login' | 'register' }) {
   }
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center px-4">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-sm"
+    <Dialog open onOpenChange={(open) => { if (!open) navigate('/', { replace: true }) }}>
+      <DialogContent
+        className="auth-dialog"
+        onCloseAutoFocus={(event) => {
+          event.preventDefault()
+          window.requestAnimationFrame(() => {
+            if (window.location.pathname === '/') document.getElementById('account-menu-trigger')?.focus()
+          })
+        }}
       >
-        {/* Logo */}
-        <div className="text-center mb-6">
-          <div className="text-5xl mb-2">🛏️</div>
-          <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent font-gaming">
-            MATRATZEN QUARTETT
-          </h1>
-        </div>
+        <header className="auth-dialog__header">
+          <span className="home-brush-label auth-dialog__badge">DEIN ACCOUNT</span>
+          <DialogTitle className="auth-dialog__title">
+            {confirmationEmail ? 'E-Mail bestätigen' : mode === 'login' ? 'Anmelden' : 'Registrieren'}
+          </DialogTitle>
+          <DialogDescription className="auth-dialog__description">
+            {confirmationEmail
+              ? 'Nur noch ein Schritt bis zu deinem Account.'
+              : mode === 'login'
+                ? 'Deine Sammlung wartet auf dich.'
+                : 'Dein Fund. Deine Karten. Dein Quartett.'}
+          </DialogDescription>
+        </header>
 
-        <Card className="border-border/50">
-          <CardHeader>
-            <CardTitle>{confirmationEmail ? 'E-Mail bestätigen' : mode === 'login' ? 'Anmelden' : 'Registrieren'}</CardTitle>
-            <CardDescription>
-              {confirmationEmail
-                ? 'Nur noch ein Schritt bis zu deinem Account.'
-                : mode === 'login'
-                ? 'Melde dich an und sammle weiter!'
-                : 'Registriere dich mit deiner eigenen E-Mail-Adresse.'}
-            </CardDescription>
-          </CardHeader>
-
-          {errorMessage && <p role="alert" className="px-6 pb-4 text-sm text-destructive">{errorMessage}</p>}
-
+        <div className="auth-dialog__body">
+          {errorMessage && <p role="alert" className="auth-dialog__error">{errorMessage}</p>}
           {confirmationEmail ? (
-            <>
-              <CardContent className="space-y-4" role="status">
-                <MailCheck aria-hidden="true" className="mx-auto h-12 w-12 text-purple-400" />
+            <div className="space-y-4">
+              <div className="auth-dialog__confirmation space-y-4" role="status">
+                <MailCheck aria-hidden="true" className="h-10 w-10 text-cyan-300" />
                 <p className="text-sm">
                   Wenn die Adresse noch nicht registriert ist, erhältst du eine Bestätigungsmail an{' '}
                   <strong className="break-all">{confirmationEmail}</strong>.
@@ -169,116 +167,108 @@ export function AuthPage({ mode = 'login' }: { mode?: 'login' | 'register' }) {
                 <p className="text-sm text-muted-foreground">
                   Prüfe auch deinen Spam-Ordner. Bereits bestätigt? Melde dich mit deinem Passwort an.
                 </p>
-              </CardContent>
-              <CardFooter className="flex flex-col gap-3">
-                <Button type="button" variant="gaming" className="w-full" onClick={handleResend} disabled={isLoading || resendCooldown > 0}>
+              </div>
+              <div className="flex flex-col gap-3">
+                <Button type="button" variant="outline" className="auth-dialog__submit" onClick={handleResend} disabled={isLoading || resendCooldown > 0}>
                   {isLoading && <Loader2 aria-hidden="true" className="w-4 h-4 animate-spin" />}
                   {resendCooldown > 0 ? `Erneut senden in ${resendCooldown} s` : 'Bestätigungsmail erneut senden'}
                 </Button>
                 <Button type="button" variant="ghost" onClick={() => { setConfirmationEmail(null); setErrorMessage(null) }} disabled={isLoading}>
                   Zurück zum Formular
                 </Button>
-                {mode === 'register' && <Link to="/auth" className="text-sm text-purple-400 hover:underline">Zur Anmeldung</Link>}
-              </CardFooter>
-            </>
-          ) : <form onSubmit={handleSubmit}>
-            <fieldset disabled={isLoading || isAuthLoading}>
-            <CardContent className="space-y-4">
-              {mode === 'register' && (
+                {mode === 'register' && <Link to="/auth" className="auth-dialog__link">Zur Anmeldung</Link>}
+              </div>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} aria-busy={isLoading || isAuthLoading}>
+              <fieldset disabled={isLoading || isAuthLoading} className="space-y-4">
+                {mode === 'register' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="username">Benutzername</Label>
+                    <div className="relative">
+                      <User aria-hidden="true" className="auth-dialog__input-icon" />
+                      <Input
+                        id="username"
+                        autoComplete="username"
+                        placeholder="MatratzenKönig"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        className="auth-dialog__input"
+                        required
+                        minLength={3}
+                        maxLength={20}
+                      />
+                    </div>
+                  </div>
+                )}
                 <div className="space-y-2">
-                  <Label htmlFor="username">Benutzername</Label>
+                  <Label htmlFor="email">E-Mail</Label>
                   <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Mail aria-hidden="true" className="auth-dialog__input-icon" />
                     <Input
-                      id="username"
-                      autoComplete="username"
-                      placeholder="MatressMaster99"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      className="pl-9"
+                      id="email"
+                      type="email"
+                      autoComplete="email"
+                      placeholder="du@beispiel.de"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="auth-dialog__input"
                       required
-                      minLength={3}
-                      maxLength={20}
                     />
                   </div>
                 </div>
-              )}
-
-              <div className="space-y-2">
-                <Label htmlFor="email">E-Mail</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    id="email"
-                    type="email"
-                    autoComplete="email"
-                    placeholder="du@beispiel.de"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="pl-9"
-                    required
-                  />
+                <div className="space-y-2">
+                  <Label htmlFor="password">Passwort</Label>
+                  <div className="relative">
+                    <Lock aria-hidden="true" className="auth-dialog__input-icon" />
+                    <Input
+                      id="password"
+                      type="password"
+                      autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
+                      placeholder="Dein Passwort"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="auth-dialog__input"
+                      required
+                      minLength={6}
+                      aria-describedby={mode === 'register' ? 'password-hint' : undefined}
+                    />
+                  </div>
                 </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="password">Passwort</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    id="password"
-                    type="password"
-                    autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="pl-9"
-                    required
-                    minLength={6}
-                  />
-                </div>
-
                 {mode === 'register' && (
                   <div className="space-y-2">
                     <Label htmlFor="password-confirmation">Passwort bestätigen</Label>
-                    <Input
-                      id="password-confirmation"
-                      type="password"
-                      autoComplete="new-password"
-                      value={passwordConfirmation}
-                      onChange={(e) => setPasswordConfirmation(e.target.value)}
-                      required
-                      minLength={6}
-                    />
-                    <p className="text-xs text-muted-foreground">Mindestens 6 Zeichen. Verwende am besten ein langes, einzigartiges Passwort.</p>
+                    <div className="relative">
+                      <Lock aria-hidden="true" className="auth-dialog__input-icon" />
+                      <Input
+                        id="password-confirmation"
+                        type="password"
+                        autoComplete="new-password"
+                        placeholder="Noch einmal dein Passwort"
+                        value={passwordConfirmation}
+                        onChange={(e) => setPasswordConfirmation(e.target.value)}
+                        className="auth-dialog__input"
+                        required
+                        minLength={6}
+                        aria-describedby="password-hint"
+                      />
+                    </div>
+                    <p id="password-hint" className="text-xs text-muted-foreground">Mindestens 6 Zeichen. Verwende am besten ein langes, einzigartiges Passwort.</p>
                   </div>
                 )}
-              </div>
-            </CardContent>
-
-            <CardFooter className="flex flex-col gap-3">
-              <Button
-                type="submit"
-                variant="gaming"
-                className="w-full"
-                disabled={isLoading || isAuthLoading}
-              >
-                {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-                {mode === 'login' ? 'Anmelden' : 'Account erstellen'}
-              </Button>
-
-            </CardFooter>
-            </fieldset>
-            <div className="px-6 pb-6 text-center">
-              <Link to={mode === 'login' ? '/auth/register' : '/auth'} className="text-sm text-purple-400 hover:underline">
-                {mode === 'login'
-                  ? 'Noch kein Account? Jetzt registrieren'
-                  : 'Bereits registriert? Anmelden'}
+                <Button type="submit" variant="outline" className="auth-dialog__submit" disabled={isLoading || isAuthLoading}>
+                  {(isLoading || isAuthLoading) && <Loader2 aria-hidden="true" className="w-4 h-4 animate-spin" />}
+                  {mode === 'login' ? 'Anmelden' : 'Account erstellen'}
+                  {!isLoading && !isAuthLoading && <ArrowRight aria-hidden="true" />}
+                </Button>
+              </fieldset>
+              <Link to={mode === 'login' ? '/auth/register' : '/auth'} className="auth-dialog__link">
+                {mode === 'login' ? 'Noch kein Account? Jetzt registrieren' : 'Bereits registriert? Anmelden'}
               </Link>
-            </div>
-          </form>}
-        </Card>
-      </motion.div>
-    </div>
+            </form>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }

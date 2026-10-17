@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, Outlet } from 'react-router-dom'
 import { ArrowRight, Coins, Crown, Plus, Swords } from 'lucide-react'
 import { AccountMenu } from '@/components/layout/AccountMenu'
 import { PlayingCards } from '@/components/ui/playing-cards'
@@ -23,6 +23,7 @@ export function HomePage() {
   const { brandRef, wordmarkRef } = useFittedWordmark()
 
   return (
+    <>
     <div className="home-screen">
       <header className="home-header">
         <div className="home-brand" ref={brandRef}>
@@ -98,5 +99,7 @@ export function HomePage() {
         </Link>
       </div>
     </div>
+    <Outlet />
+    </>
   )
 }

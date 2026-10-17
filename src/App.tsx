@@ -29,9 +29,10 @@ function AppRoutes() {
   return (
     <Routes>
       <Route element={<Layout />}>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/auth" element={<AuthPage key="login" />} />
-        <Route path="/auth/register" element={<AuthPage key="register" mode="register" />} />
+        <Route path="/" element={<HomePage />}>
+          <Route path="auth" element={<AuthPage key="login" />} />
+          <Route path="auth/register" element={<AuthPage key="register" mode="register" />} />
+        </Route>
         <Route path="/boosters" element={<BoosterPage />} />
         <Route path="/collection" element={<CollectionPage />} />
         <Route path="/trading" element={<TradingPage />} />

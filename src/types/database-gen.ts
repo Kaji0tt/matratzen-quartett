@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       achievements: {
@@ -207,6 +232,49 @@ export type Database = {
           },
         ]
       }
+      booster_opening_requests: {
+        Row: {
+          booster_opening_id: string
+          created_at: string
+          request_id: string
+          user_id: string
+        }
+        Insert: {
+          booster_opening_id: string
+          created_at?: string
+          request_id: string
+          user_id: string
+        }
+        Update: {
+          booster_opening_id?: string
+          created_at?: string
+          request_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booster_opening_requests_booster_opening_id_fkey"
+            columns: ["booster_opening_id"]
+            isOneToOne: true
+            referencedRelation: "booster_openings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booster_opening_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "leaderboard"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "booster_opening_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       booster_openings: {
         Row: {
           booster_pack_id: string
@@ -310,6 +378,153 @@ export type Database = {
         }
         Relationships: []
       }
+      card_generation_settings: {
+        Row: {
+          id: boolean
+          style_guide: string
+          updated_at: string
+        }
+        Insert: {
+          id?: boolean
+          style_guide: string
+          updated_at?: string
+        }
+        Update: {
+          id?: boolean
+          style_guide?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      card_submissions: {
+        Row: {
+          ai_attempts: number
+          ai_error: string | null
+          ai_result: Json | null
+          ai_started_at: string | null
+          captured_at: string
+          card_id: string | null
+          city: string
+          condition: Database["public"]["Enums"]["card_condition"]
+          country: string
+          created_at: string
+          description: string | null
+          discovery_story: string
+          final_stats: Json | null
+          found_on: string
+          id: string
+          image_path: string
+          location: string
+          moderation_notes: string
+          name: string | null
+          observations: string
+          proposed_stats: Json
+          rarity: Database["public"]["Enums"]["rarity"]
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          surroundings: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ai_attempts?: number
+          ai_error?: string | null
+          ai_result?: Json | null
+          ai_started_at?: string | null
+          captured_at: string
+          card_id?: string | null
+          city: string
+          condition: Database["public"]["Enums"]["card_condition"]
+          country?: string
+          created_at?: string
+          description?: string | null
+          discovery_story?: string
+          final_stats?: Json | null
+          found_on: string
+          id?: string
+          image_path: string
+          location: string
+          moderation_notes?: string
+          name?: string | null
+          observations: string
+          proposed_stats: Json
+          rarity?: Database["public"]["Enums"]["rarity"]
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          surroundings: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ai_attempts?: number
+          ai_error?: string | null
+          ai_result?: Json | null
+          ai_started_at?: string | null
+          captured_at?: string
+          card_id?: string | null
+          city?: string
+          condition?: Database["public"]["Enums"]["card_condition"]
+          country?: string
+          created_at?: string
+          description?: string | null
+          discovery_story?: string
+          final_stats?: Json | null
+          found_on?: string
+          id?: string
+          image_path?: string
+          location?: string
+          moderation_notes?: string
+          name?: string | null
+          observations?: string
+          proposed_stats?: Json
+          rarity?: Database["public"]["Enums"]["rarity"]
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          surroundings?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "card_submissions_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: true
+            referencedRelation: "cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "card_submissions_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "leaderboard"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "card_submissions_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "card_submissions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "leaderboard"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "card_submissions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cards: {
         Row: {
           city: string
@@ -394,6 +609,105 @@ export type Database = {
           {
             foreignKeyName: "cards_photographer_id_fkey"
             columns: ["photographer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      daily_reward_claims: {
+        Row: {
+          claimed_at: string
+          reward_day: string
+          user_id: string
+        }
+        Insert: {
+          claimed_at?: string
+          reward_day: string
+          user_id: string
+        }
+        Update: {
+          claimed_at?: string
+          reward_day?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_reward_claims_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "leaderboard"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "daily_reward_claims_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      manual_card_entries: {
+        Row: {
+          card_id: string
+          created_at: string
+          created_by: string
+          image_path: string
+          revision: number
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          card_id: string
+          created_at?: string
+          created_by: string
+          image_path: string
+          revision?: number
+          updated_at?: string
+          updated_by: string
+        }
+        Update: {
+          card_id?: string
+          created_at?: string
+          created_by?: string
+          image_path?: string
+          revision?: number
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "manual_card_entries_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: true
+            referencedRelation: "cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "manual_card_entries_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "leaderboard"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "manual_card_entries_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "manual_card_entries_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "leaderboard"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "manual_card_entries_updated_by_fkey"
+            columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -797,6 +1111,7 @@ export type Database = {
           id: string
           is_favorite: boolean
           is_for_trade: boolean
+          manual_entry_id: string | null
           trade_price: number | null
           user_id: string
         }
@@ -807,6 +1122,7 @@ export type Database = {
           id?: string
           is_favorite?: boolean
           is_for_trade?: boolean
+          manual_entry_id?: string | null
           trade_price?: number | null
           user_id: string
         }
@@ -817,6 +1133,7 @@ export type Database = {
           id?: string
           is_favorite?: boolean
           is_for_trade?: boolean
+          manual_entry_id?: string | null
           trade_price?: number | null
           user_id?: string
         }
@@ -827,6 +1144,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "cards"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_cards_manual_entry_id_fkey"
+            columns: ["manual_entry_id"]
+            isOneToOne: true
+            referencedRelation: "manual_card_entries"
+            referencedColumns: ["card_id"]
           },
           {
             foreignKeyName: "user_cards_user_id_fkey"
@@ -862,6 +1186,73 @@ export type Database = {
       }
     }
     Functions: {
+      claim_daily_reward: { Args: never; Returns: Json }
+      claim_submission_ai: {
+        Args: { p_id: string; p_user_id: string }
+        Returns: {
+          ai_attempts: number
+          ai_error: string | null
+          ai_result: Json | null
+          ai_started_at: string | null
+          captured_at: string
+          card_id: string | null
+          city: string
+          condition: Database["public"]["Enums"]["card_condition"]
+          country: string
+          created_at: string
+          description: string | null
+          discovery_story: string
+          final_stats: Json | null
+          found_on: string
+          id: string
+          image_path: string
+          location: string
+          moderation_notes: string
+          name: string | null
+          observations: string
+          proposed_stats: Json
+          rarity: Database["public"]["Enums"]["rarity"]
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          surroundings: string
+          updated_at: string
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "card_submissions"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      create_card_submission: {
+        Args: { p_data: Json; p_id: string }
+        Returns: string
+      }
+      moderate_card_submission: {
+        Args: {
+          p_action: string
+          p_data: Json
+          p_id: string
+          p_updated_at: string
+        }
+        Returns: string
+      }
+      open_booster: {
+        Args: { p_booster_pack_id: string; p_request_id: string }
+        Returns: Json
+      }
+      save_manual_card: {
+        Args: {
+          p_data?: Json
+          p_expected_revision: number
+          p_id: string
+          p_image_path: string
+          p_owner_id?: string
+        }
+        Returns: string
+      }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
     }
@@ -917,12 +1308,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -946,11 +1337,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -971,11 +1362,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -996,11 +1387,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1013,11 +1404,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1027,6 +1418,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       achievement_category: [

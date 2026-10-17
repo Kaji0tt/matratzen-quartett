@@ -7,6 +7,10 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/compone
 import { StreetCard } from '@/components/cards/StreetCard'
 import { StreetPageHeader } from '@/components/layout/StreetPageHeader'
 import { useDemoGameStore } from '@/store/demo-game-store'
+import { useAuthStore } from '@/store/auth-store'
+import { useQuery } from '@tanstack/react-query'
+import { supabase } from '@/lib/supabase'
+import { errorMessage } from '@/lib/submissions'
 
 import type { Card, Rarity } from '@/types'
 
@@ -76,6 +80,35 @@ const RARITY_CONFIG: { value: FilterRarity; label: string; color: string }[] = [
 ]
 
 export function CollectionPage() {
+  const user = useAuthStore((state) => state.user)
+  const catalogue = useQuery({
+    queryKey: ['catalogue', user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const [cardResult, ownershipResult] = await Promise.all([
+        supabase.from('cards').select('*, profiles!cards_photographer_id_fkey(username)').eq('is_approved', true).order('created_at', { ascending: false }),
+        supabase.from('user_cards').select('card_id,manual_entry_id').eq('user_id', user!.id),
+      ])
+      if (cardResult.error) throw cardResult.error
+      if (ownershipResult.error) throw ownershipResult.error
+      const liveCards: Card[] = cardResult.data.map((row) => ({
+        id: row.id, name: row.name, description: row.description, rarity: row.rarity,
+        image_url: row.image_url, location: row.location, city: row.city, country: row.country,
+        condition: row.condition, stats: {
+          alter: row.stat_alter, flecken: row.stat_flecken, witterung: row.stat_witterung,
+          geruch: row.stat_geruch, kontaminierung: row.stat_kontaminierung,
+        },
+        photographer_id: row.photographer_id, photographer_username: row.profiles?.username ?? 'Unbekannt',
+        created_at: row.created_at, is_approved: row.is_approved, report_count: row.report_count,
+        notes: row.notes ?? undefined, attributes: [],
+      }))
+      return {
+        cards: liveCards, ownedIds: ownershipResult.data.map((row) => row.card_id),
+        editorCopyIds: ownershipResult.data.filter((row) => row.manual_entry_id !== null).map((row) => row.card_id),
+      }
+    },
+    staleTime: 0,
+  })
   const [search, setSearch] = useState('')
   const [filterOpen, setFilterOpen] = useState(false)
   const [filterRarity, setFilterRarity] = useState<FilterRarity>('all')
@@ -84,8 +117,8 @@ export function CollectionPage() {
   const localCards = useDemoGameStore((state) => state.cards)
   const track = useDemoGameStore((state) => state.track)
   const hasTrackedOpen = useRef(false)
-  const ownedIds = new Set([...OWNED_IDS, ...localCards.map((card) => card.id)])
-  const cards = [...localCards, ...DEMO_CARDS]
+  const ownedIds = new Set(user ? catalogue.data?.ownedIds ?? [] : [...OWNED_IDS, ...localCards.map((card) => card.id)])
+  const cards = user ? catalogue.data?.cards ?? [] : [...localCards, ...DEMO_CARDS]
 
   useEffect(() => {
     if (hasTrackedOpen.current) return
@@ -115,13 +148,15 @@ export function CollectionPage() {
           <h2>{ownedIds.size} <span>/ {cards.length} Karten</span></h2>
           <p>Schon gesichert. Der nächste Fund wartet.</p>
           <div className="collection-progress" role="progressbar" aria-label="Karten im Besitz" aria-valuenow={ownedIds.size} aria-valuemin={0} aria-valuemax={cards.length}>
-            <span style={{ width: `${ownedIds.size / cards.length * 100}%` }} />
+            <span style={{ width: `${cards.length ? ownedIds.size / cards.length * 100 : 0}%` }} />
           </div>
         </div>
         <Link to="/boosters" className="home-cta">Booster entdecken<ArrowRight aria-hidden="true" /></Link>
         <Layers className="collection-overview__icon" aria-hidden="true" />
       </section>
-      <p className="street-demo-note">Demo-Sammlung · Booster-Karten und eigene Demo-Funde bleiben in diesem Browser.</p>
+      <p className="street-demo-note">{user ? 'Deine Sammlung · Freigegebene Funde und echte Besitzkopien aus Supabase.' : 'Demo-Sammlung · Demo-Booster-Karten bleiben in diesem Browser.'}</p>
+      {user && catalogue.isPending && <p role="status">Deine Sammlung wird geladen …</p>}
+      {user && catalogue.isError && <div role="alert"><p>{errorMessage(catalogue.error)}</p><Button variant="outline" onClick={() => catalogue.refetch()}>Erneut laden</Button></div>}
       <section className="collection-toolbar" aria-label="Sammlung durchsuchen">
         <div className="collection-search-row">
           <Link to="/" className="page-back collection-toolbar__back" aria-label="Zurück zu Home" title="Zurück zu Home">
@@ -234,6 +269,7 @@ export function CollectionPage() {
                   {ownedIds.has(card.id) ? <Check aria-hidden="true" /> : <span aria-hidden="true">+</span>}
                   {ownedIds.has(card.id) ? 'Im Besitz' : 'Fehlt noch'}
                 </span>
+                {user && catalogue.data?.editorCopyIds.includes(card.id) && <span className="block text-center text-xs text-amber-200">Editor-Kopie · fest zugeordnet, nicht handelbar</span>}
               </div>
             ))}
           </div>

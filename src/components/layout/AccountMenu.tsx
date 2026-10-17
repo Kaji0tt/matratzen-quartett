@@ -1,7 +1,7 @@
 import { Link, useLocation } from 'react-router-dom'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import * as Avatar from '@radix-ui/react-avatar'
-import { ArrowLeftRight, Bell, ChevronDown, Shield, Store, Trophy, User } from 'lucide-react'
+import { ArrowLeftRight, Bell, ChevronDown, Shield, Store, Trophy, User, Camera, SquarePen } from 'lucide-react'
 import { useAuthStore } from '@/store/auth-store'
 import { useAppStore } from '@/store/app-store'
 import { cn } from '@/lib/utils'
@@ -14,13 +14,11 @@ export function AccountMenu() {
   const items = user
     ? [
       { href: '/profile', label: 'Profil & Einstellungen', icon: User },
+      { href: '/submissions', label: 'Meine Einreichungen', icon: Camera },
       { href: '/notifications', label: 'Benachrichtigungen', icon: Bell },
       { href: '/trading', label: 'Handel', icon: ArrowLeftRight },
       { href: '/leaderboard', label: 'Rangliste', icon: Trophy },
       { href: '/shop', label: 'Shop (Demo)', icon: Store },
-      ...(profile?.is_admin || profile?.is_moderator
-        ? [{ href: '/admin', label: 'Administration', icon: Shield }]
-        : []),
     ]
     : [
       { href: '/auth', label: 'Anmelden', icon: User },
@@ -62,6 +60,19 @@ export function AccountMenu() {
               </Link>
             </DropdownMenu.Item>
           ))}
+          {user && !profile?.is_banned && (profile?.is_admin || profile?.is_moderator) && <>
+            <DropdownMenu.Separator className="my-2 h-px bg-white/20" />
+            <DropdownMenu.Label className="px-3 py-2 text-xs font-semibold text-amber-200">Verwaltung</DropdownMenu.Label>
+            {[
+              { href: '/admin', label: 'Administration', icon: Shield },
+              { href: '/admin/cards', label: 'Manueller Karteneditor', icon: SquarePen },
+            ].map(({ href, label, icon: Icon }) => <DropdownMenu.Item key={href} asChild>
+              <Link to={href} aria-current={location.pathname === href ? 'page' : undefined} className={cn(
+                'flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium outline-none data-[highlighted]:bg-white/10 data-[highlighted]:text-white',
+                location.pathname === href && 'bg-purple-400/15 text-purple-200'
+              )}><Icon aria-hidden="true" className="h-4 w-4" />{label}</Link>
+            </DropdownMenu.Item>)}
+          </>}
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
     </DropdownMenu.Root>

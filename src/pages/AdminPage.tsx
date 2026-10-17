@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Navigate } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import {
   Shield, Users, BookOpen, Flag, CheckCircle, XCircle,
   BarChart3, Settings, AlertTriangle, UserX,
@@ -11,12 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useAuthStore } from '@/store/auth-store'
 import { cn } from '@/lib/utils'
-
-const DEMO_PENDING_CARDS = [
-  { id: '1', name: 'Neuköllner Bettfund', city: 'Berlin', photographer: 'berliner99', submitted: '2024-07-14' },
-  { id: '2', name: 'Altonaer Außenmatratze', city: 'Hamburg', photographer: 'hamburgfoto', submitted: '2024-07-13' },
-  { id: '3', name: 'Schwabinger Schlummer', city: 'München', photographer: 'muenchenkind', submitted: '2024-07-12' },
-]
+import { GenerationSettings, SubmissionsPanel } from '@/pages/SubmissionsPage'
 
 const DEMO_REPORTS = [
   { id: '1', type: 'card', target: 'Oktoberfest-Rest', reporter: 'user1', reason: 'fake_card', status: 'pending' },
@@ -34,10 +29,11 @@ const DEMO_STATS = {
 }
 
 export function AdminPage() {
-  const { profile } = useAuthStore()
+  const { user, profile, isLoading } = useAuthStore()
   const [activeTab, setActiveTab] = useState('overview')
 
-  if (!profile || (!profile.is_admin && !profile.is_moderator)) {
+  if (isLoading) return <p role="status" className="p-6">Berechtigung wird geprüft …</p>
+  if (!user || !profile || profile.is_banned || (!profile.is_admin && !profile.is_moderator)) {
     return <Navigate to="/" replace />
   }
 
@@ -54,6 +50,7 @@ export function AdminPage() {
           </div>
         </div>
 
+        <Button asChild variant="outline" className="mb-6"><Link to="/admin/cards">Manuellen Karteneditor öffnen</Link></Button>
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-6 flex-wrap h-auto gap-1">
             <TabsTrigger value="overview" className="gap-2">
@@ -63,11 +60,6 @@ export function AdminPage() {
             <TabsTrigger value="cards" className="gap-2">
               <BookOpen className="w-4 h-4" />
               Karten
-              {DEMO_STATS.pendingCards > 0 && (
-                <Badge variant="destructive" className="text-xs ml-1 h-4 px-1">
-                  {DEMO_STATS.pendingCards}
-                </Badge>
-              )}
             </TabsTrigger>
             <TabsTrigger value="reports" className="gap-2">
               <Flag className="w-4 h-4" />
@@ -94,6 +86,7 @@ export function AdminPage() {
 
           {/* Overview */}
           <TabsContent value="overview">
+            <p className="mb-4 text-sm text-amber-200">Diese Übersicht enthält Demo-Kennzahlen. Die Kartenprüfung im Tab „Karten“ arbeitet mit echten Einreichungen.</p>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
               {[
                 { icon: Users, label: 'Gesamt-Nutzer', value: DEMO_STATS.totalUsers, color: 'text-blue-400' },
@@ -118,38 +111,7 @@ export function AdminPage() {
 
           {/* Card moderation */}
           <TabsContent value="cards">
-            <Card className="border-border/50">
-              <CardHeader>
-                <CardTitle className="text-base">Ausstehende Karten ({DEMO_PENDING_CARDS.length})</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="divide-y divide-border/50">
-                  {DEMO_PENDING_CARDS.map((card) => (
-                    <div key={card.id} className="flex items-center gap-4 px-6 py-4">
-                      <div className="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center text-xl">
-                        🛏️
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-semibold text-white text-sm">{card.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {card.city} · @{card.photographer} · {card.submitted}
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button variant="gaming" size="sm" className="h-8 px-3 gap-1">
-                          <CheckCircle className="w-3.5 h-3.5" />
-                          Genehmigen
-                        </Button>
-                        <Button variant="outline" size="sm" className="h-8 px-3 gap-1 text-red-400 border-red-500/30 hover:bg-red-500/10">
-                          <XCircle className="w-3.5 h-3.5" />
-                          Ablehnen
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+            <SubmissionsPanel moderation />
           </TabsContent>
 
           {/* Reports */}
@@ -217,16 +179,7 @@ export function AdminPage() {
           {/* Settings (admin only) */}
           {profile.is_admin && (
             <TabsContent value="settings">
-              <Card className="border-border/50">
-                <CardHeader>
-                  <CardTitle className="text-base">System-Einstellungen</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground text-sm">
-                    Booster-Konfiguration, Münz-Belohnungen, Wartungsmodus.
-                  </p>
-                </CardContent>
-              </Card>
+              <GenerationSettings />
             </TabsContent>
           )}
         </Tabs>

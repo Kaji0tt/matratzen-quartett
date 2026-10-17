@@ -109,7 +109,7 @@ Zielprojekt: `kzibwksmlfoxosmkuhuk`. Die App-Anmeldung ist unabhängig vom Verwa
 
 Die Aufgaben leeren `SUPABASE_ACCESS_TOKEN` nur in ihrem eigenen Prozess, damit ein geerbter Token für ein anderes Konto nicht die persönliche Anmeldung übersteuert. Die globale Umgebung bleibt unverändert. Für manuelle CLI-Aufrufe ebenfalls `--profile matratzen-quartett` angeben und sicherstellen, dass kein fremder `SUPABASE_ACCESS_TOKEN` gesetzt ist. CLI- und MCP-Anmeldung sind getrennt; keine Zugangsdaten in die MCP-Datei oder den Chat kopieren. Zum Ändern geschützter Projekteinstellungen benötigt das Konto entsprechende Administratorrechte; eine Developer-Rolle deckt nicht alle Einstellungen ab.
 
-`Supabase: Deploy Edge Function` fragt den Namen einer vorhandenen Funktion unter `supabase/functions` ab und verwendet serverseitiges Bundling ohne Docker. Aktuell enthält das Repository noch keine Edge Functions; die Aufgabe ist für deren spätere Implementierung vorbereitet. Funktions-Secrets werden separat über Supabase verwaltet, nicht im Frontend.
+`Supabase: Deploy Edge Function` fragt den Namen einer vorhandenen Funktion unter `supabase/functions` ab und verwendet serverseitiges Bundling ohne Docker. Für Einreichungen ist `review-submission` vorhanden. Funktions-Secrets werden separat über Supabase verwaltet, nicht im Frontend.
 
 Die generierte [CLI-Konfiguration](./supabase/config.toml) ist zunächst für lokale Entwicklung eingerichtet (Auth-URLs auf Port 5173, kein nicht vorhandenes Seed-Skript). Sie wurde **nicht** auf das gehostete Projekt übertragen. `supabase config push` nicht ungeprüft ausführen: Lokale Standardwerte sollen bestehende Remote-Einstellungen nicht überschreiben. Produktionseinstellungen, kostenpflichtige Änderungen und CI/CD benötigen einen separaten Abgleich; es wurde kein automatischer Deployment-Trigger eingerichtet.
 
@@ -119,7 +119,7 @@ Dokumentation: [Supabase MCP](https://supabase.com/docs/guides/ai-tools/mcp), [V
 
 Über das Profilmenü → „Registrieren“ oder direkt unter `/auth/register` können Nutzer einen Account mit Benutzername, eigener E-Mail-Adresse und Passwort erstellen. Registrierung und Anmeldung (`/auth`) öffnen als Modal über Home, nicht als separate Seite. Home bleibt beim Wechsel zwischen den Dialogen im Hintergrund erhalten. Der Dialog übernimmt Graffiti-Schrift, dunkle Neonflächen und violett-cyanfarbene Akzente der App. Auf kleinen oder niedrigen Displays scrollt der Inhalt innerhalb des Dialogs; Titel und Schließenknopf bleiben erreichbar. Escape, Schließenknopf und Klick auf den Hintergrund führen nach Home zurück. Fokus wird im Modal gehalten und nach dem Schließen zum Profilmenü zurückgegeben. Direkte Auth-Links und Bestätigungslinks bleiben unterstützt. Das Passwort wird zur Kontrolle zweimal eingegeben; Anmeldung und Registrierung sind gegenseitig verlinkt.
 
-Das Profilmenü zeigt Gästen ausschließlich „Anmelden“ und „Registrieren“. Angemeldete Nutzer sehen stattdessen das normale Menü mit Profil, Benachrichtigungen, Handel, Rangliste und Demo-Shop sowie gegebenenfalls Administration. Maßgeblich ist die aktuelle Anmeldung, nicht ein lokal gespeichertes Profil.
+Das Profilmenü zeigt Gästen ausschließlich „Anmelden“ und „Registrieren“. Angemeldete Nutzer sehen stattdessen das normale Menü mit Profil, „Meine Einreichungen“, Benachrichtigungen, Handel, Rangliste und Demo-Shop sowie gegebenenfalls Administration. Maßgeblich ist die aktuelle Anmeldung, nicht ein lokal gespeichertes Profil.
 
 Bei aktivierter E-Mail-Bestätigung zeigt die App nach dem Absenden eine Bestätigungsansicht mit erneutem Mailversand (60 Sekunden Wartezeit). Der Link in der E-Mail führt nach `/auth` zurück; Supabase übernimmt die Sitzung, anschließend wird das vorhandene Profil geladen. Abgelaufene Links und Auth-Fehler werden angezeigt. Bei ausgeschalteter Bestätigung meldet Supabase neue Nutzer direkt an; die App unterstützt auch diesen Fall. Bereits vorhandene Accounts werden in der Bestätigungsansicht bewusst nicht offengelegt.
 
@@ -158,6 +158,16 @@ Bei Versand über Resend SMTP erstellt weiterhin **Supabase** den Inhalt; Resend
 
 ### Datenbank einrichten
 
+Die Migration `20261017193957_fix_signup_profile_search_path.sql` korrigiert den Profil-Trigger bei der Registrierung: Supabase Auth verwendet `search_path=auth`, deshalb muss die Funktion explizit in `public.profiles` schreiben. Ein unqualifiziertes `INSERT INTO profiles` erzeugt sonst `relation "profiles" does not exist` und den Auth-Fehler `Database error saving new user` (HTTP 500). Die Funktion verwendet einen festen leeren Suchpfad; Benutzername, Avatar und die bisherigen Startwerte bleiben erhalten.
+
+Der [SQL-Regressionstest](./supabase/tests/signup_trigger.sql) prüft die Profilerstellung mit dem Auth-Suchpfad, den E-Mail-Fallback sowie unveränderte geschützte Standardwerte. Er legt nur innerhalb einer zurückgerollten Transaktion Testzeilen an und versendet keine E-Mails. Nach Prüfung des Zielprojekts ausführen:
+
+```powershell
+supabase --profile matratzen-quartett db query --linked --file supabase\tests\signup_trigger.sql
+```
+
+Ein gegebenenfalls gesetzter fremder `SUPABASE_ACCESS_TOKEN` darf dabei nicht den Projekt-Login übersteuern; siehe die Hinweise zum CLI-Profil oben. Die SQL-Probe prüft den Datenbank-Trigger, nicht die SMTP-Zustellung.
+
 Die SQL-Migrationen stehen in `supabase/migrations/` in numerischer Reihenfolge. Für ein bereits bestehendes Projekt zuerst die Remote-Historie und das Schema abgleichen; bereits manuell ausgeführte SQL-Dateien nicht erneut ausführen. Migrationen nicht ungeprüft auf ein gemeinsam genutztes oder produktives Projekt anwenden:
 
 ```bash
@@ -165,13 +175,109 @@ Die SQL-Migrationen stehen in `supabase/migrations/` in numerischer Reihenfolge.
 # supabase/migrations/002_storage.sql
 # supabase/migrations/003_update_card_stats.sql
 # supabase/migrations/004_secure_game_economy.sql
+# supabase/migrations/20261017193957_fix_signup_profile_search_path.sql
+# supabase/migrations/20261017202515_card_submissions.sql
+# supabase/migrations/20261017212221_manual_card_editor.sql
+# supabase/migrations/20261017212724_manual_card_optional_owner.sql
+```
+
+### Matratzen einreichen, KI-Prüfung und Freigabe
+
+`/submit` verlangt eine Anmeldung und führt durch **Live-Kamera → Stat-Vorschläge → Funddetails**. Es gibt weder Galerie-/Dateiupload noch Demo-Einreichungen. Die Kamera benötigt HTTPS (oder localhost) und eine Kameraberechtigung. Das Foto wird direkt als JPEG mit maximal 1600 Pixel Kantenlänge und 5 MB gespeichert; Canvas entfernt dabei ursprüngliche EXIF-Metadaten. Ohne Kamera bleibt die Einreichung gesperrt. Eine Web-App kann manipulierte API-Clients nicht beweissicher als echte Kameraaufnahmen authentifizieren.
+
+Funddetails fragen Stadt, Viertel/Fundort, Land, Funddatum, Zustand sowie Stichpunkte zu Auffälligkeiten, Umgebung und optional zur Fundgeschichte ab. Keine Personen, Kennzeichen, privaten Adressen oder vertraulichen Inhalte aufnehmen. Vor dem Absenden ist die Zustimmung zur Veröffentlichung und KI-Verarbeitung erforderlich.
+
+Die Migration `20261017202515_card_submissions.sql` benötigt Migration 004. Sie richtet ein:
+
+- `card_submissions` mit eigenen Vorschlägen, unverändertem KI-Ergebnis samt Stil-/Modellstand, bearbeitbarem Kartenentwurf, Prüfnotiz und Status;
+- den privaten Bucket `submission-images`: Spieler lesen nur ihre Fotos, Admins/Moderatoren alle eingereichten Fotos; eingereichte Originale sind für Spieler nicht mehr änder- oder löschbar;
+- `card_generation_settings` mit vorläufiger Stilbeschreibung, nur durch Admins änderbar;
+- geschützte RPCs und RLS: keine direkten Client-Schreibrechte auf Einreichungsstatus oder Spielkarten; höchstens 10 neue Einreichungen pro Spieler in 24 Stunden;
+- eine idempotente Freigabe: erst Bildveröffentlichung, dann Kartenkatalog, genau eine Besitzkopie (`gift`), Profilzähler und Benachrichtigung in einer Datenbanktransaktion.
+
+Die Edge Function `review-submission` verifiziert jede Anmeldung selbst über `auth.getUser`; deshalb ist die vorgeschaltete Legacy-JWT-Prüfung in der lokalen Funktionskonfiguration ausgeschaltet. Service-Role-Key und OpenAI-Key bleiben ausschließlich serverseitig.
+
+**KI aktivieren:** Im Supabase-Dashboard unter **Edge Functions → Secrets** `OPENAI_API_KEY` setzen. Optional `OPENAI_MODEL` setzen, Standard ist `gpt-4.1-mini`; das Modell muss Structured Outputs unterstützen. Niemals einen KI- oder Service-Role-Key als `VITE_*` speichern. Für lokale Funktionen dient [supabase/functions/.env.example](./supabase/functions/.env.example) als Vorlage für die gitignorierte Datei `supabase/functions/.env`.
+
+```powershell
+$env:SUPABASE_ACCESS_TOKEN = ''
+supabase --profile matratzen-quartett functions deploy review-submission --use-api
+```
+
+Nach dem Speichern startet der Client die KI-Prüfung. Ein unterbrochener oder fehlgeschlagener Aufruf lässt den Fund bestehen und kann unter `/submissions` erneut gestartet werden (maximal drei tatsächliche KI-Versuche; ein fehlender API-Key verbraucht keinen Versuch). Eine nach zwei Minuten abgebrochene Verarbeitung darf erneut beansprucht werden. Ohne erfolgreiche KI-Prüfung ist keine Freigabe möglich; es gibt keine vorgetäuschte KI-Antwort.
+
+An OpenAI gehen **nur** Stadt, Zustand, Fund-Stichpunkte, Stat-Vorschläge, Stilvorgabe und aggregierte Vergleichswerte der letzten maximal 200 freigegebenen Karten – nicht Foto, genauer Fundort, Benutzername oder private Chats. Die KI liefert Namen, Kartentext, geprüfte Werte und eine Balancing-Begründung. Verbindlich für neue Karten: ganzzahlige Stats von 0 bis 100, insgesamt maximal **300 Punkte** und höchstens **ein Wert über 85**. Diese Grenzen werden im Backend und nochmals bei der manuellen Freigabe geprüft. Alte Karten werden nicht verändert.
+
+Über **Profilbild → Meine Einreichungen** sind alle eigenen Einreichungen mit Foto, Status, Funddetails, Stat-Vergleich und Moderationsrückmeldung paginiert sichtbar. Zustände: KI ausstehend, KI prüft, KI fehlgeschlagen, wartet auf Freigabe, Veröffentlichung läuft, freigegeben oder abgelehnt.
+
+Über **Administration → Karten** können bestehende Admins und Moderatoren Entwürfe vor der Freigabe bearbeiten (Name, Text, Stats, Seltenheit und Rückmeldung) oder mit Begründung ablehnen. Veraltete Bearbeitungsstände werden abgewiesen. Nach manueller Zustimmung erhält das Foto eine serverseitig geschützte Kopie unter `card-images/approved/`. Bei einem unterbrochenen Upload bleibt der Status „Veröffentlichung läuft“; die Moderation kann die Veröffentlichung erneut abschließen. Erst nach erfolgreicher Veröffentlichung wird die Karte spielbar und die Besitzkopie vergeben. Doppeltes Freigeben erzeugt keine zweite Karte/Kopie.
+
+**Ersten Admin selbst setzen:** Wie vereinbart wird kein Konto automatisch hochgestuft. Im Supabase SQL Editor mit dem eigenen registrierten Benutzernamen ausführen, anschließend das Profil neu laden:
+
+```sql
+UPDATE public.profiles SET is_admin = TRUE WHERE username = '<dein Benutzername>';
+```
+
+Über **Administration → Einstellungen** kann der Admin später eine allgemeine Stilbeschreibung und freigegebene, anonymisierte WhatsApp-Beispiele ergänzen. Keine vollständigen privaten Chats importieren. Die Stilvorgabe wird an OpenAI gesendet; Änderungen gelten nur für zukünftige KI-Prüfungen.
+
+Angemeldete Spieler sehen in `/collection` den echten freigegebenen Supabase-Katalog und ihren tatsächlichen Besitz, einschließlich der Belohnungskopie. Gäste behalten die lokale Demo-Sammlung. Die übrigen Demo-Spielmodi/Booster bleiben davon getrennt.
+
+**Validierung:**
+
+```powershell
+node --test supabase\tests\submission_ai.test.mjs
+supabase --profile matratzen-quartett db query --linked --file supabase\tests\card_submissions.sql
+npm run build
+npm run lint
+```
+
+Die SQL-Probe verwendet ausschließlich reservierte Testkonten und einen abschließenden Rollback. Sie prüft unter anderem Fremdzugriff, geschützte Status-/Kartenänderungen, KI-Claim, manuelle Bearbeitung, Balancing-Grenzen, Freigabe, Ablehnung und einmalige Kartengutschrift. Sie sendet keine Bilder oder Inhalte an OpenAI.
+
+Schema, Migration 004 und Edge Function wurden am 17.10.2026 im verknüpften Projekt „Matratzen Quartett“ eingerichtet und die SQL-Probe dort erfolgreich ausgeführt. Der echte OpenAI-Aufruf benötigt weiterhin das vom Betreiber einzurichtende Secret. Die Supabase Advisors melden keine Hinweise für die neuen Einreichungstabellen/-funktionen. Bestehende Hinweise betreffen unter anderem [die Leaderboard-View](https://supabase.com/docs/guides/database/database-linter?lint=0010_security_definer_view), [aufrufbare privilegierte RPCs](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable) (bei den Economy-RPCs bewusst mit Anmeldung und Besitzprüfung) und [den Passwortschutz](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection); diese sind kein Bestandteil dieser Änderung.
+
+### Manueller Karteneditor und verknüpfte Besitzer
+
+Admins und Moderatoren sehen im Profilmenü unterhalb eines Trennstrichs den Abschnitt **Verwaltung** mit **Administration** und **Manueller Karteneditor** (`/admin/cards`). Gäste, normale Spieler und gesperrte Konten erhalten keinen Editorzugriff; die Berechtigungen werden auch serverseitig geprüft.
+
+Der Editor ermöglicht:
+
+- PNG-Dateien bis **5 MB** hochzuladen und bestehende Kartenbilder durch ein neues PNG zu ersetzen; die Oberfläche prüft PNG-Signatur und Dekodierbarkeit;
+- Name, Beschreibung, Fundort, Stadt, Land, Zustand, Seltenheit, alle fünf Stats und optionale Notizen manuell zu setzen;
+- einen registrierten, nicht gesperrten Spieler nach Benutzername zu suchen und optional als Besitzer auszuwählen;
+- zuvor im Editor erstellte Karten paginiert wiederzufinden und zu bearbeiten.
+
+**Speichern veröffentlicht die Karte direkt**, ohne Kamera- oder KI-Prüfung. Der bestehende Spielereinreichungsablauf bleibt unverändert. Die Balancing-Grenzen gelten auch hier: maximal 300 Gesamtpunkte, höchstens ein Wert über 85, jeder Stat ganzzahlig von 0 bis 100. Änderungen an Text, Bild und Werten betreffen alle Kopien dieser Karte. Der anlegende Admin/Moderator wird als Ersteller hinterlegt; ein Besitzerwechsel ändert diese Urheberschaft nicht. Manuelle Erstellung zählt nicht als fotografischer Spielerbeitrag.
+
+**Die optionale Besitzkopie ist fest mit dem Editor-Eintrag verbunden:**
+
+| Editor-Aktion | Wirkung |
+|---|---|
+| Kein Besitzer gesetzt | Die Karte ist im Katalog, es wird keine Besitzkopie vergeben. |
+| Besitzer A auswählen | A erhält genau eine verknüpfte Kopie. |
+| Erneut mit Besitzer A speichern | Dieselbe Kopie bleibt bestehen; keine zusätzliche Kopie. |
+| Von A zu B wechseln | Genau die verknüpfte Kopie wird A entzogen und B zugeordnet; Favoritenstatus wird zurückgesetzt. |
+| Besitzer leeren | Nur die verknüpfte Kopie wird entfernt; die Karte bleibt im Katalog. |
+
+Andere Kopien derselben Karte, beispielsweise aus Boostern, bleiben bei jedem Besitzerwechsel unverändert. Die verknüpfte Editor-Kopie ist **nicht handelbar**; Datenbankregeln verhindern Verkaufsangebote, das Entfernen der Editor-Verknüpfung durch Spieler und das Einfügen in Tauschgeschäfte. In der Sammlung wird diese Kopie entsprechend gekennzeichnet. Normale Kopien bleiben davon unberührt.
+
+Die Migrationen `20261017212221_manual_card_editor.sql` und `20261017212724_manual_card_optional_owner.sql` wurden im verknüpften Supabase-Projekt eingerichtet. `manual_card_entries` verknüpft jede manuelle Karte mit einer eindeutigen `user_cards.manual_entry_id`. Der geschützte RPC `save_manual_card` speichert Kartendaten, Besitzwechsel, Sammlungszähler und Benachrichtigungen atomar. Eine Versionsnummer verhindert das Überschreiben parallel bearbeiteter Stände; bei Konflikten den Editor schließen, **Liste neu laden** wählen und den aktuellen Eintrag erneut öffnen. Auch nach unklarem Netzwerkfehler erst den gespeicherten Stand prüfen, statt eine zweite Karte anzulegen.
+
+PNGs liegen im öffentlichen Bucket `manual-card-images`. Nur Admins und Moderatoren dürfen neue Dateien hochladen. Bilder sind nach dem Upload unveränderlich; ein Bildwechsel erzeugt einen neuen Dateipfad. Ältere beziehungsweise nach Abbruch ungenutzte Uploads werden nicht automatisch gelöscht. Keine privaten Daten und nur eigene oder zur Verwendung freigegebene Bilder hochladen. Es wird kein OpenAI-Key für diesen Editor benötigt.
+
+Die lokale und gehostete SQL-Probe prüft Zugriffsschutz, Erstellung ohne Besitzer, Vergabe, wiederholtes Speichern, Besitzerwechsel, Leeren des Besitzers, nicht handelbare Editor-Kopien, unveränderte normale Kopien, Balancing und veraltete Bearbeitungsstände. Alle Testdaten werden zurückgerollt:
+
+```powershell
+$env:SUPABASE_ACCESS_TOKEN = ''
+supabase --profile matratzen-quartett db query --linked --file supabase\tests\manual_card_editor.sql
+npm run build
+npm run lint
 ```
 
 ### Lokaler Demo-Modus
 
-Die Trainingsseite, Demo-Booster, lokale Karteneinreichungen und der Shop-Sandbox-Ablauf funktionieren ohne Authentifizierung und speichern ihren Spielstand unter `matratzen-quartett-demo-game-v1` im Browser. Diese Daten sind keine Supabase-Kontodaten. Das Trainingsduell nutzt einen simulierten Gegner; die Sandbox führt keine Zahlung aus und genehmigte Testvorgänge schreiben keine Münzen gut. Lokal eingereichte Bilder werden im Browser auf 640 Pixel Kantenlänge komprimiert und gemeinsam mit der Demo-Karte gespeichert.
+Die Trainingsseite, Demo-Booster und der Shop-Sandbox-Ablauf funktionieren ohne Authentifizierung und speichern ihren Spielstand unter `matratzen-quartett-demo-game-v1` im Browser. Diese Daten sind keine Supabase-Kontodaten. Das Trainingsduell nutzt einen simulierten Gegner; die Sandbox führt keine Zahlung aus und genehmigte Testvorgänge schreiben keine Münzen gut. Bereits lokal gespeicherte Demo-Funde bleiben in der Gast-Sammlung erhalten; neue Einreichungen benötigen ein Konto und gehen ausschließlich an Supabase.
 
-Die produktive Authentifizierung und Fotoeinreichung verwenden weiterhin Supabase. Migration 004 ergänzt serverseitig geschützte `claim_daily_reward`- und `open_booster`-RPCs, schützt Profilfortschritt und Sammlungsbesitz vor direkter Client-Manipulation und macht Booster-Anfragen idempotent. Die RPCs müssen erst nach Prüfung und Anwendung auf der Zielumgebung an die produktive UI angebunden werden; bis dahin werden produktive Coins und Karten nicht über die lokalen Demo-Seiten verändert. KI-Kartengenerierung, echter Multiplayer, echte Zahlungen und serverseitige Analytics sind nicht eingerichtet. Es gibt ein Web-App-Manifest, aber keinen Offline-Service-Worker.
+Die produktive Authentifizierung und Fotoeinreichung verwenden Supabase. Migration 004 ergänzt serverseitig geschützte `claim_daily_reward`- und `open_booster`-RPCs, schützt Profilfortschritt und Sammlungsbesitz vor direkter Client-Manipulation und macht Booster-Anfragen idempotent. Diese Economy-RPCs sind weiterhin nicht an die Demo-Booster-/Trainings-UI angebunden; produktive Coins und Karten werden nicht über lokale Demo-Seiten verändert. KI-Kartengenerierung ist wie oben beschrieben vorbereitet und nach Setzen des OpenAI-Secrets nutzbar. Echter Multiplayer, echte Zahlungen und serverseitige Analytics sind nicht eingerichtet. Es gibt ein Web-App-Manifest, aber keinen Offline-Service-Worker.
 
 Demo-Analytics verwenden das Schema `{ name, at, properties? }`, wobei `properties` nur String-, Zahlen- und Boolean-Werte enthält. Erfasst werden Uploadstart/-abschluss/-fehler, Kartengenerierung und -ansicht, Sammlungsaufruf, Boosteröffnung, Spielstart/-abschluss/-abbruch, Shop-/Sandbox-Aktionen und tägliche Demo-Belohnungen. Die letzten 500 Ereignisse bleiben nur lokal im Browser; sie werden weder an Supabase gesendet noch für Nutzerprofile zusammengeführt. Eine autorisierte, aggregierte Analytics-Schnittstelle für KI-Auswertungen ist noch nicht vorhanden.
 

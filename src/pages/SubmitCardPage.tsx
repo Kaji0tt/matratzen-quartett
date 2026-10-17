@@ -1,497 +1,144 @@
-import { useState, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
-import {
-  Camera, X, ChevronRight, ChevronLeft, Check, Loader2, Upload,
-} from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { SubmissionCamera } from '@/components/cards/SubmissionCamera'
+import { StatInputs } from '@/components/cards/StatInputs'
 import { supabase } from '@/lib/supabase'
+import { errorMessage, submissionAction } from '@/lib/submissions'
 import { useAuthStore } from '@/store/auth-store'
 import { toast } from '@/hooks/use-toast'
-import { cn } from '@/lib/utils'
-import { createDemoImageDataUrl } from '@/lib/demo-image'
-import { useDemoGameStore } from '@/store/demo-game-store'
-import type { Card as GameCard, CardCondition } from '@/types'
+import { DEFAULT_STATS } from '@/types/submissions'
+import type { CardCondition } from '@/types'
 
-const STAT_LABELS: Record<string, { label: string; hint: string }> = {
-  alter:           { label: 'Alter',           hint: 'Wie alt wirkt die Matratze?' },
-  flecken:         { label: 'Flecken',         hint: 'Wie viele/intensive Flecken sind sichtbar?' },
-  witterung:       { label: 'Witterung',       hint: 'Wie stark ist sie den Elementen ausgesetzt?' },
-  geruch:          { label: 'Geruch',          hint: 'Wie intensiv ist der Muffgeruch?' },
-  kontaminierung:  { label: 'Kontaminierung',  hint: 'Wie hoch ist das Hygiene-Risiko?' },
-}
-
-const CONDITIONS: { value: CardCondition; label: string; emoji: string }[] = [
-  { value: 'mint',      label: 'Mint',      emoji: '✨' },
-  { value: 'excellent', label: 'Excellent', emoji: '👍' },
-  { value: 'good',      label: 'Good',      emoji: '👌' },
-  { value: 'fair',      label: 'Fair',      emoji: '🤏' },
-  { value: 'poor',      label: 'Poor',      emoji: '💀' },
-]
-
-const STEPS = ['Foto', 'Details', 'Stats']
+const STEPS = ['Kamerafoto', 'Stat-Vorschläge', 'Funddetails']
+const textAreaClass = 'w-full min-h-24 rounded-lg border border-input bg-background p-3 text-sm'
 
 export function SubmitCardPage() {
   const navigate = useNavigate()
-  const { user, profile } = useAuthStore()
-  const addDemoCard = useDemoGameStore((state) => state.addCard)
-  const track = useDemoGameStore((state) => state.track)
-  const isDemo = !user || !profile
-  const fileInputRef = useRef<HTMLInputElement>(null)
-
+  const { user, isLoading } = useAuthStore()
   const [step, setStep] = useState(0)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [dragOver, setDragOver] = useState(false)
-
-  // Step 0 – Photo
-  const [imageFile, setImageFile] = useState<File | null>(null)
-  const [imagePreview, setImagePreview] = useState<string | null>(null)
-
-  // Step 1 – Details
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
-  const [location, setLocation] = useState('')
+  const [photo, setPhoto] = useState<File | null>(null)
+  const [preview, setPreview] = useState('')
+  const [capturedAt, setCapturedAt] = useState('')
+  const [stats, setStats] = useState({ ...DEFAULT_STATS })
   const [city, setCity] = useState('')
+  const [location, setLocation] = useState('')
   const [country, setCountry] = useState('DE')
+  const [foundOn, setFoundOn] = useState(new Date().toLocaleDateString('en-CA'))
   const [condition, setCondition] = useState<CardCondition>('good')
-  const [notes, setNotes] = useState('')
+  const [observations, setObservations] = useState('')
+  const [surroundings, setSurroundings] = useState('')
+  const [story, setStory] = useState('')
+  const [consent, setConsent] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const requestId = useRef(crypto.randomUUID())
+  const uploaded = useRef(false)
+  const submitting = useRef(false)
 
-  // Step 2 – Stats
-  const [stats, setStats] = useState({
-    alter: 50,
-    flecken: 50,
-    witterung: 50,
-    geruch: 50,
-    kontaminierung: 50,
-  })
+  useEffect(() => {
+    if (!photo) { setPreview(''); return }
+    const url = URL.createObjectURL(photo)
+    setPreview(url)
+    return () => URL.revokeObjectURL(url)
+  }, [photo])
 
-  // ── Handlers ────────────────────────────────────────────────
+  if (isLoading) return <p className="p-6" role="status">Anmeldung wird geprüft …</p>
+  if (!user) return <div className="container mx-auto max-w-lg space-y-4 px-4 py-8">
+    <h1 className="text-2xl font-bold">Matratze einreichen</h1>
+    <p>Für echte Einreichungen und deine Belohnungskopie brauchst du ein Konto.</p>
+    <Button asChild><Link to="/auth">Anmelden</Link></Button>
+    <Button asChild variant="outline"><Link to="/auth/register">Registrieren</Link></Button>
+  </div>
 
-  const handleFileSelect = (file: File) => {
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-      toast({ title: 'Nur Bilder erlaubt', description: 'JPG, PNG oder WEBP.', variant: 'destructive' })
-      return
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      toast({ title: 'Bild zu groß', description: 'Maximal 5 MB erlaubt.', variant: 'destructive' })
-      return
-    }
-    if (imagePreview) URL.revokeObjectURL(imagePreview)
-    setImageFile(file)
-    setImagePreview(URL.createObjectURL(file))
-    if (isDemo) track('upload_started', { mode: 'demo' })
-  }
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault()
-    setDragOver(false)
-    const file = e.dataTransfer.files[0]
-    if (file) handleFileSelect(file)
-  }
-
-  const handleSubmit = async () => {
-    if (!imageFile) return
-    setIsSubmitting(true)
-
+  async function submit() {
+    if (!user || !photo || !consent || submitting.current) return
+    submitting.current = true
+    setBusy(true)
     try {
-      if (isDemo) {
-        const imageUrl = await createDemoImageDataUrl(imageFile)
-        const demoCard: GameCard = {
-          id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-          name: name.trim(),
-          description: description.trim() || 'Eine selbst beschriebene Matratze aus dem lokalen Demo-Modus.',
-          rarity: 'common',
-          image_url: imageUrl,
-          location: location.trim(),
-          city: city.trim(),
-          country: country.trim().toUpperCase() || 'DE',
-          condition,
-          stats,
-          notes: notes.trim(),
-          photographer_id: 'demo-local',
-          photographer_username: 'Demo-Spiel',
-          created_at: new Date().toISOString(),
-          is_approved: true,
-          report_count: 0,
-          attributes: [],
-        }
-        if (!addDemoCard(demoCard)) throw new Error('Diese Demo-Karte wurde bereits hinzugefügt.')
-        toast({
-          title: 'Demo-Karte erstellt',
-          description: 'Die Karte und das komprimierte Bild bleiben lokal in diesem Browser. Es wurde keine KI verwendet.',
-        })
-        navigate('/collection')
-        return
+      const imagePath = `${user.id}/${requestId.current}.jpg`
+      if (!uploaded.current) {
+        const { error } = await supabase.storage.from('submission-images').upload(imagePath, photo, { contentType: 'image/jpeg', upsert: false })
+        if (error) throw error
+        uploaded.current = true
       }
-      if (!user) throw new Error('Für eine echte Einreichung ist eine Anmeldung erforderlich.')
-
-      // 1. Upload image → card-images/{user_id}/{uuid}.ext
-      const ext = imageFile.type === 'image/png' ? 'png' : imageFile.type === 'image/webp' ? 'webp' : 'jpg'
-      const fileName = `${user.id}/${crypto.randomUUID()}.${ext}`
-
-      const { error: uploadError } = await supabase.storage
-        .from('card-images')
-        .upload(fileName, imageFile, { contentType: imageFile.type, upsert: false })
-
-      if (uploadError) throw uploadError
-
-      const { data: urlData } = supabase.storage
-        .from('card-images')
-        .getPublicUrl(fileName)
-
-      // 2. Insert card record (is_approved defaults to false → goes to moderation queue)
-      const { error: insertError } = await supabase.from('cards').insert({
-        name: name.trim(),
-        description: description.trim(),
-        location: location.trim(),
-        city: city.trim(),
-        country: country.trim().toUpperCase(),
-        condition,
-        image_url: urlData.publicUrl,
-        photographer_id: user.id,
-        stat_alter: stats.alter,
-        stat_flecken: stats.flecken,
-        stat_witterung: stats.witterung,
-        stat_geruch: stats.geruch,
-        stat_kontaminierung: stats.kontaminierung,
-        notes: notes.trim(),
+      const { error } = await supabase.rpc('create_card_submission', {
+        p_id: requestId.current,
+        p_data: {
+          captured_at: capturedAt, city: city.trim(), location: location.trim(), country: country.toUpperCase(),
+          found_on: foundOn, condition, observations: observations.trim(), surroundings: surroundings.trim(),
+          discovery_story: story.trim(), proposed_stats: { ...stats },
+        },
       })
-
-      if (insertError) throw insertError
-
-      toast({
-        title: '🛏️ Karte eingereicht!',
-        description: 'Ein Moderator prüft deine Matratze. Du wirst benachrichtigt.',
-      })
-      navigate('/collection')
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Unbekannter Fehler'
-      if (isDemo) track('upload_failed', { mode: 'demo' })
-      toast({ title: 'Fehler beim Einreichen', description: message, variant: 'destructive' })
+      if (error) throw error
+      toast({ title: 'Fund gespeichert', description: 'Die KI prüft jetzt deine Stichpunkte und Stat-Vorschläge.' })
+      try {
+        await submissionAction({ id: requestId.current, action: 'generate' })
+        toast({ title: 'KI-Prüfung abgeschlossen', description: 'Deine Karte wartet jetzt auf die manuelle Freigabe.' })
+      } catch (aiError) {
+        toast({ title: 'Fund gespeichert · KI-Prüfung noch offen', description: errorMessage(aiError), variant: 'destructive' })
+      }
+      navigate('/submissions')
+    } catch (err) {
+      toast({ title: 'Einreichung fehlgeschlagen', description: errorMessage(err), variant: 'destructive' })
     } finally {
-      setIsSubmitting(false)
+      submitting.current = false
+      setBusy(false)
     }
   }
 
-  const canProceed = [
-    imagePreview !== null,
-    name.trim().length >= 2 && location.trim().length >= 2 && city.trim().length >= 2,
-    true, // stats always valid
-  ]
+  const detailsValid = city.trim().length >= 2 && location.trim().length >= 2 && /^[A-Z]{2}$/.test(country)
+    && !!foundOn && foundOn <= new Date().toLocaleDateString('en-CA') && foundOn >= '2000-01-01'
+    && observations.trim().length >= 10 && surroundings.trim().length >= 3 && consent
 
-  // ── Render ───────────────────────────────────────────────────
-
-  return (
-    <div className="container mx-auto max-w-lg px-4 py-6">
-      {/* Header */}
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
-        <h1 className="text-2xl font-bold text-white">Karte einreichen</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          {isDemo
-            ? 'Lokale Demo: Erstelle eine Karte aus deinem Foto. Sie bleibt in diesem Browser und wird nicht hochgeladen.'
-            : 'Fotografiere eine Straßenmatratze — nach Freigabe wird sie Teil des Spiels.'}
-        </p>
-        {isDemo && <p className="mt-2 text-xs text-amber-300">DEMO · keine KI-Generierung · kein Upload · keine Spielwährung</p>}
-      </motion.div>
-
-      {/* Step indicator */}
-      <div className="flex items-center mb-8">
-        {STEPS.map((label, i) => (
-          <div key={i} className="flex items-center flex-1 last:flex-none">
-            <div className="flex flex-col items-center gap-1">
-              <div className={cn(
-                'w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300',
-                step > i  ? 'bg-primary text-primary-foreground scale-90'
-                          : step === i ? 'bg-primary/20 border-2 border-primary text-primary'
-                          : 'bg-muted text-muted-foreground'
-              )}>
-                {step > i ? <Check className="w-4 h-4" /> : i + 1}
-              </div>
-              <span className={cn(
-                'text-[10px] font-medium',
-                step === i ? 'text-primary' : 'text-muted-foreground'
-              )}>{label}</span>
-            </div>
-            {i < STEPS.length - 1 && (
-              <div className={cn('flex-1 h-0.5 mx-2 mb-4 transition-colors duration-300', step > i ? 'bg-primary' : 'bg-muted')} />
-            )}
-          </div>
-        ))}
-      </div>
-
-      {/* Steps */}
-      <AnimatePresence mode="wait">
-        {/* ── Step 0: Photo ── */}
-        {step === 0 && (
-          <motion.div key="step0"
-            initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }}
-            transition={{ duration: 0.2 }}
-          >
-            <div
-              className={cn(
-                'relative rounded-2xl border-2 border-dashed transition-all duration-200 overflow-hidden',
-                dragOver ? 'border-primary bg-primary/10 scale-[1.01]'
-                         : imagePreview ? 'border-primary/40 border-solid' : 'border-border hover:border-primary/50',
-              )}
-              onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={handleDrop}
-              onClick={() => !imagePreview && fileInputRef.current?.click()}
-            >
-              {imagePreview ? (
-                <div className="relative group cursor-default">
-                  <img
-                    src={imagePreview}
-                    alt="Vorschau"
-                    className="w-full h-72 object-cover"
-                  />
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      if (imagePreview) URL.revokeObjectURL(imagePreview)
-                      setImageFile(null)
-                      setImagePreview(null)
-                    }}
-                    className="absolute top-3 right-3 bg-black/60 hover:bg-black/90 rounded-full p-1.5 transition-colors"
-                  >
-                    <X className="w-4 h-4 text-white" />
-                  </button>
-                </div>
-              ) : (
-                <div
-                  className="flex flex-col items-center justify-center py-16 px-4 text-center cursor-pointer"
-                >
-                  <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-                    <Camera className="w-8 h-8 text-muted-foreground" />
-                  </div>
-                  <p className="font-semibold text-white mb-1">Foto auswählen</p>
-                  <p className="text-xs text-muted-foreground">Antippen oder Bild hierher ziehen</p>
-                  <p className="text-xs text-muted-foreground mt-1">JPG, PNG, WEBP · max. 5 MB</p>
-                </div>
-              )}
-            </div>
-
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/jpg,image/png,image/webp"
-              className="hidden"
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileSelect(f) }}
-            />
-
-            {imagePreview && (
-              <Button
-                variant="outline"
-                className="w-full mt-3 gap-2"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <Upload className="w-4 h-4" />
-                Anderes Foto wählen
-              </Button>
-            )}
-          </motion.div>
-        )}
-
-        {/* ── Step 1: Details ── */}
-        {step === 1 && (
-          <motion.div key="step1"
-            initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }}
-            transition={{ duration: 0.2 }}
-            className="space-y-4"
-          >
-            <div>
-              <Label htmlFor="name">Name der Karte *</Label>
-              <Input
-                id="name"
-                placeholder="z.B. Berliner Bürgersteig-Bett"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                maxLength={60}
-                className="mt-1.5"
-                autoFocus
-              />
-              <p className="text-xs text-muted-foreground text-right mt-1">{name.length}/60</p>
-            </div>
-
-            <div>
-              <Label htmlFor="description">Beschreibung</Label>
-              <textarea
-                id="description"
-                placeholder="Was macht diese Matratze besonders?"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                maxLength={300}
-                rows={3}
-                className="mt-1.5 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
-              />
-              <p className="text-xs text-muted-foreground text-right">{description.length}/300</p>
-            </div>
-
-            <div>
-              <Label htmlFor="notes">Persönliche Notizen (optional)</Label>
-              <textarea
-                id="notes"
-                placeholder="z.B. Funknummer, spezielle Gegebenheiten, Kontakt zum Fotograf..."
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                maxLength={200}
-                rows={2}
-                className="mt-1.5 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
-              />
-              <p className="text-xs text-muted-foreground text-right">{notes.length}/200</p>
-            </div>
-
-            <div>
-              <Label htmlFor="location">Fundort (Straße / Ecke) *</Label>
-              <Input
-                id="location"
-                placeholder="Schönhauser Allee, Ecke Kastanienallee"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                className="mt-1.5"
-              />
-            </div>
-
-            <div className="grid grid-cols-3 gap-3">
-              <div className="col-span-2">
-                <Label htmlFor="city">Stadt *</Label>
-                <Input
-                  id="city"
-                  placeholder="Berlin"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  className="mt-1.5"
-                />
-              </div>
-              <div>
-                <Label htmlFor="country">Land</Label>
-                <Input
-                  id="country"
-                  placeholder="DE"
-                  value={country}
-                  onChange={(e) => setCountry(e.target.value.toUpperCase().slice(0, 2))}
-                  maxLength={2}
-                  className="mt-1.5 uppercase"
-                />
-              </div>
-            </div>
-
-            <div>
-              <Label className="mb-2 block">Zustand</Label>
-              <div className="grid grid-cols-5 gap-2">
-                {CONDITIONS.map(({ value, label, emoji }) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => setCondition(value)}
-                    className={cn(
-                      'flex flex-col items-center gap-1 p-2 rounded-lg border text-xs transition-all',
-                      condition === value
-                        ? 'border-primary bg-primary/10 text-primary'
-                        : 'border-border text-muted-foreground hover:border-border/70'
-                    )}
-                  >
-                    <span className="text-lg">{emoji}</span>
-                    <span className="font-medium">{label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {/* ── Step 2: Stats ── */}
-        {step === 2 && (
-          <motion.div key="step2"
-            initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }}
-            transition={{ duration: 0.2 }}
-            className="space-y-6"
-          >
-            <p className="text-sm text-muted-foreground">
-              Bewerte die Matratze auf einer Skala von 0–100. Diese Werte bestimmen ihre Stärke im Quartett-Kampf.
-            </p>
-
-            {(Object.keys(stats) as Array<keyof typeof stats>).map((key) => (
-              <div key={key}>
-                <div className="flex justify-between items-baseline mb-1.5">
-                  <div>
-                    <span className="text-sm font-semibold text-white">{STAT_LABELS[key].label}</span>
-                    <p className="text-xs text-muted-foreground">{STAT_LABELS[key].hint}</p>
-                  </div>
-                  <span className="text-xl font-bold text-primary tabular-nums w-10 text-right">
-                    {stats[key]}
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min={0}
-                  max={100}
-                  step={1}
-                  value={stats[key]}
-                  onChange={(e) => setStats(prev => ({ ...prev, [key]: Number(e.target.value) }))}
-                  className="w-full h-2 accent-primary cursor-pointer"
-                />
-                <div className="flex justify-between text-[10px] text-muted-foreground mt-0.5">
-                  <span>0</span>
-                  <span>50</span>
-                  <span>100</span>
-                </div>
-              </div>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Navigation */}
-      <div className="flex gap-3 mt-8">
-        {step > 0 && (
-          <Button
-            variant="outline"
-            onClick={() => setStep(s => s - 1)}
-            disabled={isSubmitting}
-            className="gap-1"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            Zurück
-          </Button>
-        )}
-
-        {step < 2 ? (
-          <Button
-            variant="gaming"
-            className="flex-1 gap-2"
-            disabled={!canProceed[step]}
-            onClick={() => setStep(s => s + 1)}
-          >
-            Weiter
-            <ChevronRight className="w-4 h-4" />
-          </Button>
-        ) : (
-          <Button
-            variant="gaming"
-            className="flex-1 gap-2"
-            onClick={handleSubmit}
-            disabled={isSubmitting}
-          >
-            {isSubmitting
-              ? <><Loader2 className="w-4 h-4 animate-spin" /> Wird eingereicht…</>
-              : <><Check className="w-4 h-4" /> {isDemo ? 'Demo-Karte erstellen' : 'Karte einreichen'}</>
-            }
-          </Button>
-        )}
-      </div>
-
-      {step === 2 && (
-        <p className="text-xs text-muted-foreground text-center mt-4">
-          {isDemo
-            ? 'Deine Demo-Karte und ein komprimiertes Bild werden lokal in diesem Browser gespeichert. Es gibt keine Belohnung.'
-            : 'Nach der Einreichung prüft ein Moderator deine Karte. Belohnungen werden erst nach einer serverseitigen Freigabe gutgeschrieben.'}
-        </p>
-      )}
+  return <div className="container mx-auto max-w-lg space-y-6 px-4 py-8">
+    <header><h1 className="text-2xl font-bold">Matratze einreichen</h1>
+      <p className="mt-2 text-sm text-muted-foreground">Vom Bordstein ins Quartett. Nach KI-Prüfung und manueller Freigabe erhältst du eine Kopie.</p></header>
+    <ol aria-label="Einreichungsschritte" className="flex gap-3 text-sm">
+      {STEPS.map((label, index) => <li key={label} aria-current={step === index ? 'step' : undefined}
+        className={step === index ? 'font-bold text-purple-300' : 'text-muted-foreground'}>{index + 1}. {label}</li>)}
+    </ol>
+    <section className="rounded-xl border border-purple-400/25 bg-slate-950/70 p-5 space-y-5">
+      <h2 className="text-lg font-semibold">{STEPS[step]}</h2>
+      {step === 0 && (photo ? <div className="space-y-4">
+        {preview && <img src={preview} alt="Dein frisches Matratzenfoto" className="max-h-96 w-full rounded-lg object-contain" />}
+        <Button variant="outline" disabled={uploaded.current} onClick={() => setPhoto(null)}>Neu aufnehmen</Button>
+      </div> : <SubmissionCamera onCapture={(file, date) => { setPhoto(file); setCapturedAt(date) }} />)}
+      {step === 1 && <>
+        <p className="text-sm text-muted-foreground">Deine Wunschwerte, nicht die finalen Stats. Die KI prüft sie auf Plausibilität und Spielbalance; die Moderation entscheidet abschließend.</p>
+        <StatInputs value={stats} onChange={setStats} />
+      </>}
+      {step === 2 && <div className="space-y-4">
+        <label className="block text-sm">Stadt<Input value={city} maxLength={100} onChange={(e) => setCity(e.target.value)} /></label>
+        <label className="block text-sm">Fundort / Viertel (keine private Adresse)<Input value={location} maxLength={150} onChange={(e) => setLocation(e.target.value)} /></label>
+        <label className="block text-sm">Land (Ländercode)<Input value={country} maxLength={2} onChange={(e) => setCountry(e.target.value.toUpperCase())} /></label>
+        <label className="block text-sm">Funddatum<Input type="date" min="2000-01-01" max={new Date().toLocaleDateString('en-CA')} value={foundOn} onChange={(e) => setFoundOn(e.target.value)} /></label>
+        <label className="block text-sm">Zustand
+          <select className="mt-1 w-full rounded-lg border border-input bg-background p-3" value={condition} onChange={(e) => setCondition(e.target.value as CardCondition)}>
+            <option value="mint">Wie neu</option><option value="excellent">Sehr gut</option><option value="good">Gebraucht</option>
+            <option value="fair">Mitgenommen</option><option value="poor">Bordstein-Endboss</option>
+          </select>
+        </label>
+        <label className="block text-sm">Was fällt auf? (mind. 10 Zeichen)
+          <textarea className={textAreaClass} maxLength={1200} value={observations} onChange={(e) => setObservations(e.target.value)} placeholder="Flecken, Muster, Form, Schäden, auffällige Details – Stichpunkte reichen." />
+        </label>
+        <label className="block text-sm">Wie lag sie da? (mind. 3 Zeichen)
+          <textarea className={textAreaClass} maxLength={600} value={surroundings} onChange={(e) => setSurroundings(e.target.value)} placeholder="An die Laterne gelehnt, im Regen, zwischen Sperrmüll …" />
+        </label>
+        <label className="block text-sm">Die Geschichte zum Fund (optional)
+          <textarea className={textAreaClass} maxLength={600} value={story} onChange={(e) => setStory(e.target.value)} placeholder="Was macht diesen Fund besonders? Keine Namen oder privaten Chats." />
+        </label>
+        <label className="flex items-start gap-3 text-sm">
+          <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-1" />
+          <span>Das Foto ist von mir und darf im Spiel veröffentlicht werden. Meine Fund-Stichpunkte, Stadt und Stat-Vorschläge dürfen zur Text- und Balancing-Prüfung an OpenAI übermittelt werden. Ich habe keine personenbezogenen oder vertraulichen Daten angegeben. Das Foto selbst wird nicht an OpenAI gesendet.</span>
+        </label>
+      </div>}
+    </section>
+    <div className="flex justify-between gap-3">
+      <Button variant="outline" disabled={step === 0 || busy} onClick={() => setStep(step - 1)}>Zurück</Button>
+      {step < 2 ? <Button disabled={!photo} onClick={() => setStep(step + 1)}>Weiter</Button>
+        : <Button disabled={!detailsValid || busy} onClick={submit}>{busy ? 'Wird gespeichert …' : 'Fund einreichen'}</Button>}
     </div>
-  )
+    <Link className="block text-sm text-purple-300 underline" to="/submissions">Meine Einreichungen ansehen</Link>
+  </div>
 }

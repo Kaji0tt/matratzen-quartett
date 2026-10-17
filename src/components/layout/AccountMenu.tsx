@@ -7,21 +7,25 @@ import { useAppStore } from '@/store/app-store'
 import { cn } from '@/lib/utils'
 
 export function AccountMenu() {
-  const profile = useAuthStore((state) => state.profile)
+  const user = useAuthStore((state) => state.user)
+  const profile = useAuthStore((state) => state.user ? state.profile : null)
   const notificationCount = useAppStore((state) => state.notificationCount)
   const location = useLocation()
-  const items = [
-    ...(profile ? [
+  const items = user
+    ? [
       { href: '/profile', label: 'Profil & Einstellungen', icon: User },
       { href: '/notifications', label: 'Benachrichtigungen', icon: Bell },
-    ] : [{ href: '/auth', label: 'Anmelden', icon: User }]),
-    { href: '/trading', label: 'Handel', icon: ArrowLeftRight },
-    { href: '/leaderboard', label: 'Rangliste', icon: Trophy },
-    { href: '/shop', label: 'Shop (Demo)', icon: Store },
-    ...(profile?.is_admin || profile?.is_moderator
-      ? [{ href: '/admin', label: 'Administration', icon: Shield }]
-      : []),
-  ]
+      { href: '/trading', label: 'Handel', icon: ArrowLeftRight },
+      { href: '/leaderboard', label: 'Rangliste', icon: Trophy },
+      { href: '/shop', label: 'Shop (Demo)', icon: Store },
+      ...(profile?.is_admin || profile?.is_moderator
+        ? [{ href: '/admin', label: 'Administration', icon: Shield }]
+        : []),
+    ]
+    : [
+      { href: '/auth', label: 'Anmelden', icon: User },
+      { href: '/auth/register', label: 'Registrieren', icon: User },
+    ]
 
   return (
     <DropdownMenu.Root modal={false}>
@@ -38,7 +42,7 @@ export function AccountMenu() {
           </span>
           <span className="min-w-0">
             <span className="block truncate text-sm font-semibold text-white">{profile?.username ?? 'Willkommen'}</span>
-            <span className="block text-xs text-muted-foreground">{profile ? 'Profil & mehr' : 'Anmelden & mehr'}</span>
+            <span className="block text-xs text-muted-foreground">{user ? 'Profil & mehr' : 'Anmelden / Registrieren'}</span>
           </span>
           <ChevronDown aria-hidden="true" className="h-4 w-4 shrink-0 text-slate-400" />
           {profile && notificationCount > 0 && <span className="rounded-full bg-purple-500/25 px-2 text-xs text-purple-200" aria-label={`${notificationCount} ungelesene Benachrichtigungen`}>{notificationCount > 99 ? '99+' : notificationCount}</span>}
@@ -46,7 +50,7 @@ export function AccountMenu() {
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
         <DropdownMenu.Content align="start" sideOffset={12} collisionPadding={12} className="floating-header floating-gradient-border floating-navigation z-[60] w-72 max-w-[calc(100vw-1.5rem)] overflow-y-auto rounded-2xl border border-transparent p-2 text-slate-200 outline-none">
-          <DropdownMenu.Label className="px-3 py-2 text-xs text-slate-400">Profil & weitere Funktionen</DropdownMenu.Label>
+          <DropdownMenu.Label className="px-3 py-2 text-xs text-slate-400">{user ? 'Profil & weitere Funktionen' : 'Dein Account'}</DropdownMenu.Label>
           {items.map(({ href, label, icon: Icon }) => (
             <DropdownMenu.Item key={href} asChild>
               <Link to={href} aria-current={location.pathname === href ? 'page' : undefined} className={cn(

@@ -1,6 +1,8 @@
 import { useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/auth-store'
+import { toast } from '@/hooks/use-toast'
+import type { User } from '@supabase/supabase-js'
 import type { Database } from '@/types/database-gen'
 
 type ProfileRow = Database['public']['Tables']['profiles']['Row']
@@ -37,31 +39,76 @@ export function useAuth() {
     useAuthStore()
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
-      setLoading(false)
-    })
+    let active = true
+    const updateUser = (nextUser: User | null) => {
+      if (!active) return
+      if (!nextUser) {
+        reset()
+        return
+      }
+      if (useAuthStore.getState().user?.id !== nextUser.id) {
+        setProfile(null)
+        setLoading(true)
+      }
+      setUser(nextUser)
+    }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setUser(session?.user ?? null)
-        if (session?.user) {
-          const { data } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single()
-          if (data) {
-            setProfile(mapProfileRow(data))
-          }
-        } else {
-          reset()
-        }
-      }
+      (_event, session) => updateUser(session?.user ?? null)
     )
 
-    return () => subscription.unsubscribe()
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (!active) return
+      if (error) {
+        toast({ title: 'Anmeldung fehlgeschlagen', description: error.message, variant: 'destructive' })
+      }
+      updateUser(session?.user ?? null)
+    }).catch((error: unknown) => {
+      if (!active) return
+      reset()
+      toast({
+        title: 'Anmeldung fehlgeschlagen',
+        description: error instanceof Error ? error.message : 'Die Sitzung konnte nicht geladen werden.',
+        variant: 'destructive',
+      })
+    })
+
+    return () => {
+      active = false
+      subscription.unsubscribe()
+    }
   }, [setUser, setProfile, setLoading, reset])
+
+  const userId = user?.id
+  useEffect(() => {
+    if (!userId) return
+    let active = true
+    setLoading(true)
+
+    const loadProfile = async () => {
+      try {
+        const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single()
+        if (error) throw error
+        if (active) setProfile(mapProfileRow(data))
+      } catch (error) {
+        if (!active) return
+        setProfile(null)
+        toast({
+          title: 'Profil konnte nicht geladen werden',
+          description: error instanceof Error
+            ? error.message
+            : typeof error === 'object' && error !== null && 'message' in error && typeof error.message === 'string'
+              ? error.message
+              : 'Bitte lade die Seite erneut.',
+          variant: 'destructive',
+        })
+      } finally {
+        if (active) setLoading(false)
+      }
+    }
+    void loadProfile()
+    return () => { active = false }
+  }, [userId, setProfile, setLoading])
 
   return { user, profile, isLoading }
 }

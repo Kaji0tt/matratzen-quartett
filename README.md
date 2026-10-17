@@ -115,6 +115,47 @@ Die generierte [CLI-Konfiguration](./supabase/config.toml) ist zunächst für lo
 
 Dokumentation: [Supabase MCP](https://supabase.com/docs/guides/ai-tools/mcp), [VS Code MCP](https://code.visualstudio.com/docs/agent-customization/mcp-servers).
 
+### Registrierung mit eigener E-Mail-Adresse
+
+Über das Profilmenü → „Registrieren“ oder direkt unter `/auth/register` können Nutzer einen Account mit Benutzername, eigener E-Mail-Adresse und Passwort erstellen. Das Passwort wird zur Kontrolle zweimal eingegeben. `/auth` bleibt die Anmeldung und verlinkt die Registrierung.
+
+Das Profilmenü zeigt Gästen ausschließlich „Anmelden“ und „Registrieren“. Angemeldete Nutzer sehen stattdessen das normale Menü mit Profil, Benachrichtigungen, Handel, Rangliste und Demo-Shop sowie gegebenenfalls Administration. Maßgeblich ist die aktuelle Anmeldung, nicht ein lokal gespeichertes Profil.
+
+Bei aktivierter E-Mail-Bestätigung zeigt die App nach dem Absenden eine Bestätigungsansicht mit erneutem Mailversand (60 Sekunden Wartezeit). Der Link in der E-Mail führt nach `/auth` zurück; Supabase übernimmt die Sitzung, anschließend wird das vorhandene Profil geladen. Abgelaufene Links und Auth-Fehler werden angezeigt. Bei ausgeschalteter Bestätigung meldet Supabase neue Nutzer direkt an; die App unterstützt auch diesen Fall. Bereits vorhandene Accounts werden in der Bestätigungsansicht bewusst nicht offengelegt.
+
+**Gehostetes Supabase-Projekt:**
+
+1. Unter **Authentication → Sign In / Providers → Email** E-Mail-Anmeldung und neue Registrierungen erlauben, E-Mail-Bestätigung aktiviert lassen.
+2. Unter **Authentication → URL Configuration** die tatsächliche App-URL als Site URL und die exakte Rücksprungadresse `<App-URL>/auth` als Redirect URL hinterlegen. Für lokale Entwicklung beide Varianten `http://localhost:5173/auth` und `http://127.0.0.1:5173/auth` erlauben.
+3. Unter **Authentication → Email → SMTP Settings** einen eigenen SMTP-Dienst mit verifiziertem Absender einrichten. Der Supabase-Standardversand ist auf Team-Adressen und derzeit zwei Mails pro Stunde beschränkt: Für beliebige private E-Mail-Adressen ist ein eigener SMTP-Dienst erforderlich. SMTP-Passwörter und persönliche Access Tokens niemals in `VITE_*`-Variablen oder im Repository ablegen.
+4. Mit einer eigenen echten Adresse registrieren, die Bestätigung öffnen, das Profil prüfen und nach dem Abmelden erneut anmelden.
+
+Die CLI verwaltet das Projekt; die Registrierung selbst läuft über `supabase.auth.signUp`, die Anmeldung über `signInWithPassword`, der erneute Versand über `resend`. Vor CLI-Konfigurationsänderungen immer `supabase config --help` und `supabase config push --help` prüfen. Die lokale Konfiguration nicht ungeprüft auf Produktion übertragen; für Remote-Auth-Einstellungen sind passende Verwaltungsrechte erforderlich.
+
+**Lokal mit der Supabase CLI:** `supabase start --help` prüfen, dann `supabase start` ausführen und die lokalen URL-/Publishable-Key-Werte in `.env.local` verwenden. In der lokalen Konfiguration sind Registrierung und E-Mail-Bestätigung aktiv; Bestätigungsmails landen ausschließlich im lokalen Mail-Postfach unter `http://127.0.0.1:54324`. Der Link führt zurück zur App auf Port 5173. Das bestehende Datenbankschema einschließlich des Profil-Triggers muss in der jeweiligen Umgebung vorhanden sein; die Registrierung schreibt keine Profile mit erhöhten Client-Rechten.
+
+Dokumentation: [E-Mail und Passwort](https://supabase.com/docs/guides/auth/passwords), [SMTP für beliebige Empfänger](https://supabase.com/docs/guides/auth/auth-smtp), [Redirect URLs](https://supabase.com/docs/guides/auth/redirect-urls).
+
+#### Bestätigungsmail im App-Design
+
+Die fertige [HTML-Vorlage](./supabase/templates/confirmation.html) übernimmt den dunklen Neon-Look mit violetten und cyanfarbenen Akzenten und „Mattress matters“-Branding ohne Krone. Primäres Logo ist der [gesprayte Schriftzug als transparentes PNG](./public/art/matratzen-quartett-mail-logo.png), direkt aus der App-Schrift Aerosoldier exportiert: einzeilig, um 7 Grad geneigt, in Weiß und Violett. Die Grafik hat 1440 × 348 Pixel für eine maximale Anzeigegröße von 480 × 116 Pixeln und skaliert auf schmalen Displays proportional herunter. Eine kleinere echte Textüberschrift darunter bleibt auch bei blockierten Bildern sichtbar; die dekorative Grafik hat deshalb einen leeren Alternativtext. Die Mail benötigt keinen Webfont.
+
+Der Projektinhaber hat die Nutzungserlaubnis für den Schriftzug bestätigt. Die beiliegende ursprüngliche Font-Lizenzdatei bleibt unverändert; den Nachweis der zusätzlichen Erlaubnis separat aufbewahren.
+
+Der Inhalt startet ohne Eyebrow oder zusätzliche Überschrift direkt mit „Hinter diesem Klick warten nasse Nächte und süße Träume“. Der Bestätigungsbutton übernimmt den dunklen Verlauf, den violetten Neonrand, die Rundung und einen statischen Glow der Home-Container, ohne Animation. Tabellenlayout, Inline-Styles, Ersatzschriften, ein Vorschautext fürs Postfach und ein kopierbarer Ersatzlink halten die Mail auch ohne geladenes Logo bedienbar. Mailprogramme ohne Unterstützung für Verläufe, Schatten oder Rundungen zeigen einen dunklen Button mit violettem Rand; der Bestätigungslink funktioniert auch ohne diese Effekte.
+
+Im gehosteten Projekt unter **Authentication → Email → Templates → Confirm sign up**:
+
+1. Betreff auf `Dein Account wartet | Matratzen Quartett` setzen.
+2. Den vollständigen Inhalt von `supabase/templates/confirmation.html` in den HTML-/Source-Editor der Vorlage kopieren und speichern.
+3. `{{ .ConfirmationURL }}` und `{{ .SiteURL }}` unverändert lassen. Supabase setzt den sicheren Bestätigungslink und die konfigurierte App-Adresse ein; nicht durch eine feste URL ersetzen.
+4. Die App inklusive `public/art/matratzen-quartett-mail-logo.png` deployen. Das Bild wird über `{{ .SiteURL }}/art/matratzen-quartett-mail-logo.png` geladen: Bei Site URL `https://matratzen.app` muss `https://matratzen.app/art/matratzen-quartett-mail-logo.png` öffentlich ohne Anmeldung erreichbar sein. Eine absolute Site URL ohne abschließenden Schrägstrich verwenden; keine relativen Bildpfade, lokalen Dateipfade oder Base64-Bilder in die Mail eintragen.
+5. Mit einer eigenen Adresse eine echte Registrierung testen, jeweils mit aktivierten und blockierten Bildern. Vorschau und Mailclient können sich unterscheiden; den Bestätigungslink erst beim eigentlichen Funktionstest öffnen.
+
+Für lokale CLI-Instanzen ist die Vorlage bereits unter `auth.email.template.confirmation` in der [Konfiguration](./supabase/config.toml) eingebunden. Die gehostete Vorlage wurde nicht verändert. Nicht die gesamte lokale Konfiguration auf Produktion übertragen, nur um diese Mailvorlage zu aktualisieren.
+
+Bei Versand über Resend SMTP erstellt weiterhin **Supabase** den Inhalt; Resend liefert die fertige Mail aus. In Resend angelegte Templates werden nicht automatisch verwendet. Link-Tracking für Auth-Mails beim Versandanbieter deaktiviert lassen, damit einmalige Bestätigungslinks nicht umgeschrieben werden.
+
 ### Datenbank einrichten
 
 Die SQL-Migrationen stehen in `supabase/migrations/` in numerischer Reihenfolge. Für ein bereits bestehendes Projekt zuerst die Remote-Historie und das Schema abgleichen; bereits manuell ausgeführte SQL-Dateien nicht erneut ausführen. Migrationen nicht ungeprüft auf ein gemeinsam genutztes oder produktives Projekt anwenden:

@@ -31,7 +31,7 @@ SELECT set_config('test.submission_data', jsonb_build_object(
   'observations', 'Viele Flecken, eine Ecke eingerissen',
   'name', 'Meine Bordsteinliege', 'description', 'Sie wartet unter der Laterne auf den nächsten Umzug.',
   'surroundings', 'Unter einer Laterne', 'discovery_story', 'Beim Spaziergang entdeckt',
-  'proposed_stats', '{"witterung":100,"ambiente":100,"komfort":100,"format":100,"charakter":100}'::JSONB
+  'proposed_stats', '{"witterung":100,"flecken":100,"ambiente":100,"komfort":100,"charakter":100}'::JSONB
 )::TEXT, TRUE);
 
 SET LOCAL ROLE anon;
@@ -94,13 +94,13 @@ END $$;
 UPDATE public.card_submissions SET status = 'pending_review',
   ai_result = '{"reasoning":"Stärken mit Schwächen ausbalanciert"}',
   name = 'Bordsteinjuwel', description = 'Ein Fund mit ordentlich Straßenpatina.',
-  final_stats = '{"witterung":70,"ambiente":60,"komfort":50,"format":40,"charakter":30}'
+  final_stats = '{"witterung":70,"flecken":40,"ambiente":60,"komfort":50,"charakter":30}'
 WHERE id = '92000000-0000-0000-0000-000000000001';
 RESET ROLE;
 SELECT set_config('request.jwt.claim.sub', '91000000-0000-0000-0000-000000000003', TRUE);
 SELECT set_config('test.moderation_data', '{
   "name":"Laternen-Luxus","description":"Eine Legende zwischen Laterne und Bordstein.",
-  "stats":{"witterung":85,"ambiente":75,"komfort":60,"format":50,"charakter":30},
+  "stats":{"witterung":85,"flecken":47,"ambiente":75,"komfort":63,"charakter":30},
   "rarity":"rare","notes":"Manuell geprüft"
 }', TRUE);
 SET LOCAL ROLE authenticated;
@@ -121,12 +121,12 @@ SELECT pg_temp.expect_error($q$SELECT public.moderate_card_submission(
   '92000000-0000-0000-0000-000000000001',
   (SELECT updated_at FROM public.card_submissions WHERE id = '92000000-0000-0000-0000-000000000001'),
   'publish', jsonb_set(current_setting('test.moderation_data')::JSONB, '{stats}',
-    '{"witterung":100,"ambiente":100,"komfort":100,"format":100,"charakter":100}'))$q$);
+    '{"witterung":100,"flecken":100,"ambiente":100,"komfort":100,"charakter":100}'))$q$);
 SELECT pg_temp.expect_error($q$SELECT public.moderate_card_submission(
   '92000000-0000-0000-0000-000000000001',
   (SELECT updated_at FROM public.card_submissions WHERE id = '92000000-0000-0000-0000-000000000001'),
   'publish', jsonb_set(current_setting('test.moderation_data')::JSONB, '{stats}',
-    '{"witterung":86,"ambiente":86,"komfort":0,"format":0,"charakter":0}'))$q$);
+    '{"witterung":86,"flecken":86,"ambiente":0,"komfort":0,"charakter":0}'))$q$);
 SELECT pg_temp.expect_error($q$SELECT public.moderate_card_submission(
   '92000000-0000-0000-0000-000000000001', now() - INTERVAL '1 day',
   'save', current_setting('test.moderation_data')::JSONB)$q$);
@@ -166,8 +166,8 @@ DO $$ BEGIN
       AND s.submitted_name = 'Meine Bordsteinliege'
       AND s.submitted_description = 'Sie wartet unter der Laterne auf den nächsten Umzug.'
       AND s.name = 'Laternen-Luxus' AND c.name = s.name
-      AND c.stat_witterung = 85 AND c.stat_ambiente = 75 AND c.stat_komfort = 60
-      AND c.stat_format = 50 AND c.stat_charakter = 30 AND NOT c.stats_need_review
+      AND c.stat_witterung = 85 AND c.stat_ambiente = 75 AND c.stat_komfort = 63
+      AND c.stat_flecken = 47 AND c.stat_charakter = 30 AND NOT c.stats_need_review
   ) THEN RAISE EXCEPTION 'Published attributes or unchanged player originals are incorrect'; END IF;
   IF (SELECT count(*) FROM public.user_cards WHERE user_id = '91000000-0000-0000-0000-000000000001') <> 1
     OR (SELECT count(*) FROM public.cards WHERE photographer_id = '91000000-0000-0000-0000-000000000001') <> 1

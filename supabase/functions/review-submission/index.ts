@@ -85,7 +85,7 @@ Deno.serve(async (req: Request) => {
     const { data: settings, error: settingsError } = await admin.from('card_generation_settings').select('style_guide').eq('id', true).single()
     if (settingsError) throw settingsError
     const { data: catalogue, error: catalogueError } = await admin.from('cards')
-      .select('name,description,stat_witterung,stat_ambiente,stat_komfort,stat_format,stat_charakter')
+      .select('name,description,stat_witterung,stat_flecken,stat_ambiente,stat_komfort,stat_charakter')
       .eq('is_approved', true).order('created_at', { ascending: false }).limit(200)
     if (catalogueError) throw catalogueError
     const baseline = Object.fromEntries(STAT_KEYS.map((key) => [

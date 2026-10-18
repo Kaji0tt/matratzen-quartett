@@ -11,12 +11,13 @@ BEGIN
 END;
 $$;
 DO $$ BEGIN
-  IF NOT private.valid_submission_stats('{"witterung":0,"ambiente":100,"komfort":50,"format":50,"charakter":50}')
+  IF NOT private.valid_submission_stats('{"witterung":0,"flecken":50,"ambiente":100,"komfort":50,"charakter":50}')
+    OR private.valid_submission_stats('{"witterung":0,"ambiente":100,"komfort":50,"format":50,"charakter":50}')
     OR private.valid_submission_stats('{"alter":50,"flecken":50,"witterung":50,"geruch":50,"kontaminierung":50}')
-    OR private.valid_submission_stats('{"witterung":0,"ambiente":100,"komfort":50,"format":50,"charakter":50,"extra":1}')
-    OR private.valid_submission_stats('{"witterung":0,"ambiente":100,"komfort":50,"format":50,"charakter":1.5}')
-    OR private.valid_submission_stats('{"witterung":0,"ambiente":100,"komfort":50,"format":50,"charakter":101}')
-    OR private.valid_submission_stats('{"witterung":0,"ambiente":100,"komfort":50,"format":50,"charakter":"50"}') THEN
+    OR private.valid_submission_stats('{"witterung":0,"flecken":50,"ambiente":100,"komfort":50,"charakter":50,"extra":1}')
+    OR private.valid_submission_stats('{"witterung":0,"flecken":50,"ambiente":100,"komfort":50,"charakter":1.5}')
+    OR private.valid_submission_stats('{"witterung":0,"flecken":50,"ambiente":100,"komfort":50,"charakter":101}')
+    OR private.valid_submission_stats('{"witterung":0,"flecken":50,"ambiente":100,"komfort":50,"charakter":"50"}') THEN
     RAISE EXCEPTION 'Stat validator accepted wrong keys or values';
   END IF;
 END $$;
@@ -29,7 +30,7 @@ SELECT set_config('test.attribute_data', jsonb_build_object(
   'found_on', CURRENT_DATE, 'condition', 'good', 'observations', 'Gepolstert mit Blumenmuster',
   'surroundings', 'Zwischen zwei Stuehlen', 'name', 'Dit is meine Liege',
   'description', 'Dit is meine Matratze, wa.',
-  'proposed_stats', '{"witterung":10,"ambiente":90,"komfort":70,"format":50,"charakter":60}'::JSONB
+  'proposed_stats', '{"witterung":10,"flecken":50,"ambiente":90,"komfort":70,"charakter":60}'::JSONB
 )::TEXT, TRUE);
 SELECT set_config('request.jwt.claim.sub', '99000000-0000-0000-0000-000000000001', TRUE);
 SET LOCAL ROLE authenticated;

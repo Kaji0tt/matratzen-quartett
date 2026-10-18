@@ -181,6 +181,7 @@ Die SQL-Migrationen stehen in `supabase/migrations/` in numerischer Reihenfolge.
 # supabase/migrations/20261017212724_manual_card_optional_owner.sql
 # supabase/migrations/20261018100611_diverse_card_attributes.sql
 # supabase/migrations/20261018110014_remove_uncommon_rarity.sql
+# supabase/migrations/20261018112044_restore_flecken_stat.sql
 ```
 
 ### Matratzen einreichen, KI-Prüfung und Freigabe
@@ -189,19 +190,21 @@ Die SQL-Migrationen stehen in `supabase/migrations/` in numerischer Reihenfolge.
 
 Funddetails fragen einen **selbst geschriebenen Kartennamen (2–80 Zeichen) und Kartentext (10–1000 Zeichen)** sowie Stadt, Viertel/Fundort, Land, Funddatum, Zustand und Stichpunkte zu Auffälligkeiten, Umgebung und optional zur Fundgeschichte ab. Die eigenen Texte sind Pflicht und werden getrennt von der Moderationsfassung aufbewahrt. Keine Personen, Kennzeichen, privaten Adressen oder vertraulichen Inhalte aufnehmen. Vor dem Absenden ist die Zustimmung zur Veröffentlichung und KI-Verarbeitung einschließlich Kartenname und Beschreibung erforderlich.
 
-Die fünf Spielattribute sind in dieser Reihenfolge **Witterung · Ambiente · Komfort · Format · Charakter**. Jeder Wert ist ganzzahlig von 0 bis 100; höher gewinnt:
+Die fünf Spielattribute sind in dieser Reihenfolge **Witterung · Flecken · Ambiente · Komfort · Charakter**. Jeder Wert ist ganzzahlig von 0 bis 100; höher gewinnt:
 
 | Attribut | Bewertungsmaßstab |
 |---|---|
 | Witterung | Sichtbare Spuren von Regen, Sonne und Straßenleben. Hoch bedeutet stark verwittert; Flecken allein belegen keine Witterung. |
+| Flecken | Menge, Flächenanteil und Intensität sichtbarer Flecken. Hoch bedeutet viele, große oder intensive Flecken; Muster zählen nicht. Keine Ursachen oder Gesundheitsrisiken erfinden. |
 | Ambiente | Besonderheit der Fundszene: Umgebung, Platzierung und absurde Kombinationen. Keine Bewertung von Fotoqualität oder gefährlichen Fundorten. |
 | Komfort | Wie intakt, eben und gepolstert die Matratze wirkt. Hoch bedeutet bequem wirkend, nicht sauber; kein Anfassen oder Liegetest. |
-| Format | Geschätzte ursprüngliche Liegefläche: Kinder-/kleine Matratze ca. 10–25, Einzelmatratze 40–55, Doppelmatratze 70–85, außergewöhnlich groß über 85. Perspektive und Faltung zählen nicht als Größe. |
 | Charakter | Besonderheiten der Matratze selbst: Muster, Form, Konstruktion, ungewöhnliche Reparaturen. Unabhängig von Fundort, Ekel und Booster-Seltenheit. |
 
-Die KI bewertet die Achsen unabhängig anhand der **textlichen Fundangaben**, nicht anhand des Fotos. Fehlende Informationen ergeben vorläufig 50 mit ausdrücklichem Unsicherheitshinweis in der Begründung. Neue Matratzen können durch Komfort oder Format überzeugen; Verfall ist kein universeller Bonus. Die Hinweise im Formular und im KI-Prompt verwenden dieselbe zentrale Attributdefinition.
+Die KI bewertet die Achsen unabhängig anhand der **textlichen Fundangaben**, nicht anhand des Fotos. Fehlende Informationen ergeben vorläufig 50 mit ausdrücklichem Unsicherheitshinweis in der Begründung. Neue Matratzen können durch Komfort oder Charakter überzeugen; Verfall ist kein universeller Bonus. Flecken beweisen keine Verwitterung und senken Komfort nicht automatisch: Witterung erfordert beschriebene Wetterspuren, Komfort bewertet Formstabilität und Polsterung. Die Hinweise im Formular und im KI-Prompt verwenden dieselbe zentrale Attributdefinition.
 
 Die neue Migration ergänzt die vier neuen Datenbankspalten und aktualisiert beide Freigabewege. **Altbestand wird nicht semantisch umetikettiert:** Witterung bleibt erhalten, die vier neuen Werte sind vorläufig 50 und werden sichtbar als prüfbedürftig markiert. Alte Datenbankspalten und die früheren Vorschlags-/Endwerte von Einreichungen bleiben als Historie erhalten; bestehende Texte und KI-Ergebnisse bleiben erhalten. Eine manuelle Werteprüfung hebt die Markierung auf. Lokale Demo-Spielstände werden unter Erhalt von Karten, Guthaben und Fortschritt migriert; neue Demo-Karten erhalten voneinander unabhängige Stärken ohne Seltenheitsbonus. Datenbankmigration, Edge Function und Frontend müssen zusammen ausgerollt werden; diese Änderung führt kein automatisches Remote-Deployment aus.
+
+Die Folgemigration `20261018112044_restore_flecken_stat.sql` ersetzt **Format als Spielwert durch Flecken**. Die vorhandene Spalte `stat_flecken` wird wieder aktiv verwendet; archivierte Fleckenwerte von Einreichungen werden wiederhergestellt. Ohne frühere Bewertung gilt vorläufig 50 mit Prüfhinweis. Witterung, Ambiente, Komfort, Charakter, Spielertexte und Besitz bleiben erhalten; Formatwerte werden niemals als Flecken interpretiert. Frühere Formatwerte bleiben ausschließlich als Historie erhalten. Migrierte Karten und Einreichungen sind vor der nächsten Freigabe auch auf die weiterhin geltenden Balancing-Grenzen zu prüfen. Demo-Spielstände werden entsprechend migriert, ohne vorhandene andere Achsen zu überschreiben.
 
 Die Migration `20261017202515_card_submissions.sql` benötigt Migration 004. Sie richtet ein:
 
@@ -355,7 +358,7 @@ Vollständige Dokumentation: **[PRD.md](./PRD.md)**
 
 Kernentitäten:
 - `profiles` – User-Profile mit Level, XP, Elo, Coins
-- `cards` – Matratzen-Karten mit 5 Stats (Witterung, Ambiente, Komfort, Format, Charakter)
+- `cards` – Matratzen-Karten mit 5 Stats (Witterung, Flecken, Ambiente, Komfort, Charakter)
 - `user_cards` – Sammlungs-Junction-Tabelle
 - `booster_packs` – Konfigurierbare Pack-Typen mit Seltenheitsgewichtung
 - `trade_offers` – Handelsangebote (inkl. Münz-Komponente)

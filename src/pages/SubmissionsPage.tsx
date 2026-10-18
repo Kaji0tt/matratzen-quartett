@@ -134,7 +134,7 @@ function SubmissionItem({ submission: s, imageUrl, moderation, onChanged }: {
       <span className={s.status === 'approved' ? 'text-sm text-green-300' : s.status === 'rejected' || s.status === 'ai_failed' ? 'text-sm text-red-300' : 'text-sm text-purple-200'}>{STATUS_LABELS[s.status]}</span>
     </div>
     {imageUrl && <img src={imageUrl} alt={`Eingereichtes Kamerafoto aus ${s.city}`} className="max-h-80 w-full rounded-lg object-contain bg-black/30" />}
-    {s.stats_need_review && <p role="status" className="text-sm text-amber-200">Altbestand: Die neuen Attribute sind vorläufig auf 50 gesetzt. Vor der Freigabe bitte anhand der Funddetails neu bewerten.</p>}
+    {s.stats_need_review && <p role="status" className="text-sm text-amber-200">Migrierte Werte: Frühere Fleckenwerte wurden wiederhergestellt; ohne frühere Bewertung gilt vorläufig 50. Vor der Freigabe bitte Werte und Balance anhand der Funddetails prüfen.</p>}
     {s.submitted_name && s.submitted_description && <details className="text-sm">
       <summary className="cursor-pointer text-purple-200">Unveränderter Spielertext</summary>
       <p className="mt-2 font-semibold">{s.submitted_name}</p>

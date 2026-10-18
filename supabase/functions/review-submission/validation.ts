@@ -1,4 +1,4 @@
-export const STAT_KEYS = ['witterung', 'ambiente', 'komfort', 'format', 'charakter'] as const
+export const STAT_KEYS = ['witterung', 'flecken', 'ambiente', 'komfort', 'charakter'] as const
 
 export type Stats = Record<typeof STAT_KEYS[number], number>
 export interface AIResult {

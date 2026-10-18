@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { parseAIResult, validStats } from '../functions/review-submission/validation.ts'
 
-const stats = { witterung: 85, ambiente: 75, komfort: 60, format: 50, charakter: 30 }
+const stats = { witterung: 85, flecken: 50, ambiente: 75, komfort: 60, charakter: 30 }
 const result = {
   name: 'Laternen-Luxus', description: 'Ein Bordsteinjuwel mit Straßenpatina.', stats,
   reasoning: 'Stärken werden durch niedrigeren Komfort und Charakter ausgeglichen.',
@@ -14,7 +14,7 @@ test('accepts an actual AI-shaped result at the 300 point budget', () => {
 })
 test('rejects over-budget and multiple peak stats without silently normalizing', () => {
   assert.throws(() => parseAIResult({ ...result, stats: { ...stats, witterung: 86 } }), /Balancing/)
-  assert.throws(() => parseAIResult({ ...result, stats: { witterung: 86, ambiente: 86, komfort: 0, format: 0, charakter: 0 } }), /Balancing/)
+  assert.throws(() => parseAIResult({ ...result, stats: { witterung: 86, flecken: 86, ambiente: 0, komfort: 0, charakter: 0 } }), /Balancing/)
 })
 test('accepts one peak balanced with weaknesses', () => {
   assert.equal(parseAIResult({ ...result, stats: { ...stats, witterung: 100, ambiente: 0 } }).stats.witterung, 100)

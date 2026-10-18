@@ -26,9 +26,9 @@ export interface Card {
 
 export interface CardStats {
   witterung: number
+  flecken: number
   ambiente: number
   komfort: number
-  format: number
   charakter: number
 }
 

@@ -14,10 +14,11 @@ Begründe die Stat-Freigabe oder Änderungen separat auf Deutsch (10–1500 Zeic
 Alle fünf Stats sind ganze Zahlen von 0 bis 100. Hohe Werte gewinnen. Verbindlich: Summe maximal 300, höchstens ein Wert über 85.
 Bewertungsmaßstäbe:
 ${STAT_FIELDS.map(({ label, hint }) => `- ${label}: ${hint}`).join('\n')}
-Gemeinsame Skala: 0–20 kaum ausgeprägt/klein, 21–40 unterdurchschnittlich, 41–60 durchschnittlich, 61–80 ausgeprägt/groß, 81–100 außergewöhnlich.
-Bewerte jede Achse unabhängig. Verwitterung darf hoch und Komfort niedrig sein, eine neue Matratze kann hohen Komfort oder großes Format haben.
+Gemeinsame Skala: 0–20 kaum ausgeprägt, 21–40 unterdurchschnittlich, 41–60 durchschnittlich, 61–80 ausgeprägt, 81–100 außergewöhnlich.
+Bewerte jede Achse unabhängig. Verwitterung darf hoch und Komfort niedrig sein, eine neue Matratze kann hohen Komfort oder besonderen Charakter haben.
 Flecken, Alter, Sauberkeit und Ekel bestimmen nicht pauschal alle Werte. Ambiente betrifft die Szene, Charakter ausschließlich die Matratze.
-Format: Kinder-/sehr kleine Matratze etwa 10–25, Einzelmatratze etwa 40–55, Doppelmatratze etwa 70–85, außergewöhnlich große Liegefläche über 85. Keine exakten Maße erfinden.
+Flecken: 0–20 keine oder wenige schwache Spuren, 21–40 einzelne deutliche Flecken, 41–60 mehrere auffällige Flecken, 61–80 große oder intensive befleckte Flächen, 81–100 nahezu flächendeckend oder extrem ausgeprägt.
+Witterung und Flecken getrennt begründen: Flecken allein beweisen keine Verwitterung; Verwitterung erfordert beschriebene Regen-/Sonnenspuren. Flecken senken Komfort nicht automatisch; dort zählen Formstabilität und Polsterung.
 Wenn Angaben für eine Achse fehlen: vorläufig 50, Unsicherheit ausdrücklich in der Stat-Begründung nennen und Moderationsprüfung empfehlen. Nicht aus anderen Achsen ableiten.
 Vermeide Power Creep und Allround-Sieger: starke Werte brauchen Schwächen. Nutze den Katalogdurchschnitt als Vergleich, nicht als starres Ziel.
 Spielervorschläge sind keine Ansprüche. Plausibilität geht vor Wunschwerten; keine künstliche Spitzenwertung für jede Karte.

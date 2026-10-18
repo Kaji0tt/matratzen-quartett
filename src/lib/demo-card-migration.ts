@@ -15,12 +15,24 @@ export function migrateDemoCards(value: unknown): Record<string, unknown> {
         || typeof old.witterung !== 'number' || !Number.isInteger(old.witterung) || old.witterung < 0 || old.witterung > 100) {
         throw new Error('Die Witterung einer gespeicherten Demo-Karte ist ungültig.')
       }
+      const restoreValue = (key: string): number => {
+        const value: unknown = Reflect.get(old, key)
+        if (value === undefined) return 50
+        if (typeof value !== 'number' || !Number.isInteger(value) || value < 0 || value > 100) {
+          throw new Error(`Der gespeicherte Wert ${key} ist ungültig.`)
+        }
+        return value
+      }
       return {
         ...migrated,
-        stats: { witterung: old.witterung, ambiente: 50, komfort: 50, format: 50, charakter: 50 },
+        stats: {
+          witterung: old.witterung, flecken: restoreValue('flecken'), ambiente: restoreValue('ambiente'),
+          komfort: restoreValue('komfort'), charakter: restoreValue('charakter'),
+        },
         attributes: [
-          ...('attributes' in card && Array.isArray(card.attributes) ? card.attributes : []),
-          { key: 'Werteprüfung', value: 'Altbestand: Neue Attribute sind vorläufig auf 50 gesetzt und müssen geprüft werden.' },
+          ...('attributes' in card && Array.isArray(card.attributes) ? card.attributes.filter((attribute: unknown) =>
+            !attribute || typeof attribute !== 'object' || !('key' in attribute) || attribute.key !== 'Werteprüfung') : []),
+          { key: 'Werteprüfung', value: 'Migrierte Werte bitte prüfen. Frühere Fleckenwerte wurden wiederhergestellt; fehlende Bewertungen sind vorläufig 50.' },
         ],
       }
     }),

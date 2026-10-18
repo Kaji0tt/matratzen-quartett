@@ -101,8 +101,8 @@ function ManualCardForm({ entry, onSaved, onClose }: {
   const [rarity, setRarity] = useState<Rarity>(entry?.cards.rarity ?? 'common')
   const [notes, setNotes] = useState(entry?.cards.notes ?? '')
   const [stats, setStats] = useState(entry ? {
-    witterung: entry.cards.stat_witterung, ambiente: entry.cards.stat_ambiente, komfort: entry.cards.stat_komfort,
-    format: entry.cards.stat_format, charakter: entry.cards.stat_charakter,
+    witterung: entry.cards.stat_witterung, flecken: entry.cards.stat_flecken, ambiente: entry.cards.stat_ambiente,
+    komfort: entry.cards.stat_komfort, charakter: entry.cards.stat_charakter,
   } : { ...DEFAULT_STATS })
   const [owner, setOwner] = useState<Owner | null>(entry?.user_cards ? {
     id: entry.user_cards.user_id, username: entry.user_cards.profiles?.username ?? entry.user_cards.user_id,

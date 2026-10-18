@@ -8,13 +8,13 @@ import { reviewPrompt } from '../supabase/functions/review-submission/prompt.ts'
 const result = () => ({
   name: 'Die Bordsteinliege',
   description: 'Sie wartet geduldig auf den nächsten Umzug.',
-  stats: { witterung: 15, ambiente: 65, komfort: 90, format: 75, charakter: 45 },
-  reasoning: 'Komfortabel, aber kaum verwittert. Größe und Szene unabhängig bewertet.',
+  stats: { witterung: 15, flecken: 75, ambiente: 65, komfort: 90, charakter: 45 },
+  reasoning: 'Komfortabel, aber kaum verwittert. Flecken und Szene unabhängig bewertet.',
   text_review: { needs_review: false, reasoning: 'Der trockene Humor passt zum Quartett.' },
 })
 
 test('all five attributes share their keys, order and labels across UI and AI', () => {
-  assert.deepEqual(STAT_KEYS, ['witterung', 'ambiente', 'komfort', 'format', 'charakter'])
+  assert.deepEqual(STAT_KEYS, ['witterung', 'flecken', 'ambiente', 'komfort', 'charakter'])
   assert.deepEqual(STAT_FIELDS.map(({ key }) => key), STAT_KEYS)
   assert.deepEqual(Object.keys(DEFAULT_STATS), STAT_KEYS)
   assert.deepEqual(Object.keys(STAT_LABELS), STAT_KEYS)
@@ -27,21 +27,22 @@ test('only exact, integer, finite, in-range stat objects are accepted', () => {
     null, [], {},
     { ...DEFAULT_STATS, alter: 10 },
     { alter: 10, flecken: 20, witterung: 30, geruch: 40, kontaminierung: 50 },
+    { witterung: 10, ambiente: 20, komfort: 30, format: 40, charakter: 50 },
     ...[-1, 101, 1.5, NaN, Infinity, '50', null].map((komfort) => ({ ...DEFAULT_STATS, komfort })),
   ]) {
     assert.equal(validStats(stats), false)
     assert.equal(readStats(stats), null)
   }
-  assert.ok(validStats({ witterung: 0, ambiente: 100, komfort: 0, format: 100, charakter: 0 }))
+  assert.ok(validStats({ witterung: 0, flecken: 100, ambiente: 100, komfort: 0, charakter: 0 }))
 })
 
 test('AI balancing enforces exact sum and peak boundaries', () => {
   const input = result()
   assert.equal(Object.values(input.stats).reduce((sum, v) => sum + v, 0), 290)
   assert.deepEqual(parseAIResult(input), input)
-  assert.doesNotThrow(() => parseAIResult({ ...input, stats: { witterung: 100, ambiente: 85, komfort: 85, format: 30, charakter: 0 } }))
-  assert.throws(() => parseAIResult({ ...input, stats: { witterung: 100, ambiente: 85, komfort: 85, format: 31, charakter: 0 } }), /Balancing/)
-  assert.throws(() => parseAIResult({ ...input, stats: { witterung: 86, ambiente: 86, komfort: 0, format: 0, charakter: 0 } }), /Balancing/)
+  assert.doesNotThrow(() => parseAIResult({ ...input, stats: { witterung: 100, flecken: 30, ambiente: 85, komfort: 85, charakter: 0 } }))
+  assert.throws(() => parseAIResult({ ...input, stats: { witterung: 100, flecken: 31, ambiente: 85, komfort: 85, charakter: 0 } }), /Balancing/)
+  assert.throws(() => parseAIResult({ ...input, stats: { witterung: 86, flecken: 86, ambiente: 0, komfort: 0, charakter: 0 } }), /Balancing/)
 })
 
 test('text assessment is required, separately validated and retained for moderation', () => {
@@ -89,6 +90,8 @@ test('prompt distinguishes object and setting and only requests language correct
   assert.ok(prompt.includes('ausschließlich die Moderation'))
   assert.ok(prompt.includes('Das Foto wird NICHT an dich gesendet'))
   assert.ok(prompt.includes('vorläufig 50'))
+  assert.ok(prompt.includes('Witterung und Flecken getrennt begründen'))
+  assert.ok(!prompt.includes('Format:'))
 })
 
 test('legacy demo migration preserves ownership, progress, weather and existing attributes', () => {
@@ -101,7 +104,7 @@ test('legacy demo migration preserves ownership, progress, weather and existing 
   assert.equal(migrated.coins, old.coins)
   assert.equal(migrated.wins, old.wins)
   assert.deepEqual(migrated.boosterRequests, old.boosterRequests)
-  assert.deepEqual(migrated.cards[0].stats, { witterung: 80, ambiente: 50, komfort: 50, format: 50, charakter: 50 })
+  assert.deepEqual(migrated.cards[0].stats, { witterung: 80, flecken: 75, ambiente: 50, komfort: 50, charakter: 50 })
   assert.equal(migrated.cards[0].description, 'Mein Text')
   assert.deepEqual(migrated.cards[0].attributes[0], old.cards[0].attributes[0])
   assert.equal(migrated.cards[0].attributes[1].key, 'Werteprüfung')
@@ -111,7 +114,8 @@ test('legacy demo migration preserves ownership, progress, weather and existing 
 test('demo migration keeps new stats and rejects invalid persisted data explicitly', () => {
   const card = { id: 'new', stats: DEFAULT_STATS }
   assert.deepEqual(migrateDemoCards({ cards: [card] }).cards, [card])
-  for (const value of [null, {}, { cards: [null] }, { cards: [{ stats: { witterung: -1 } }] }]) {
+  for (const value of [null, {}, { cards: [null] }, { cards: [{ stats: { witterung: -1 } }] },
+    { cards: [{ stats: { witterung: 10, flecken: 101 } }] }]) {
     assert.throws(() => migrateDemoCards(value), /ungültig/)
   }
 })
@@ -130,6 +134,20 @@ test('demo migration can upgrade both legacy attributes and legacy rarity at onc
     cards: [{ id: 'old', rarity: 'uncommon', stats: { alter: 90, flecken: 80, witterung: 75, geruch: 70, kontaminierung: 60 } }],
   })
   assert.equal(migrated.cards[0].rarity, 'common')
-  assert.deepEqual(migrated.cards[0].stats, { witterung: 75, ambiente: 50, komfort: 50, format: 50, charakter: 50 })
+  assert.deepEqual(migrated.cards[0].stats, { witterung: 75, flecken: 80, ambiente: 50, komfort: 50, charakter: 50 })
   assert.equal(migrated.cards[0].attributes[0].key, 'Werteprüfung')
+})
+
+test('replacing format preserves other axes and never converts size into stains', () => {
+  const card = {
+    id: 'format-card', rarity: 'rare',
+    stats: { witterung: 15, ambiente: 75, komfort: 80, format: 99, charakter: 40 },
+    attributes: [{ key: 'Werteprüfung', value: 'Alter Hinweis' }, { key: 'Original', value: 'Bleibt' }],
+  }
+  const migrated = migrateDemoCards({ coins: 777, cards: [card] })
+  assert.deepEqual(migrated.cards[0].stats, { witterung: 15, flecken: 50, ambiente: 75, komfort: 80, charakter: 40 })
+  assert.equal(migrated.cards[0].rarity, 'rare')
+  assert.equal(migrated.cards[0].attributes.filter(({ key }) => key === 'Werteprüfung').length, 1)
+  assert.equal(card.stats.format, 99)
+  assert.deepEqual(migrateDemoCards(migrated), migrated)
 })

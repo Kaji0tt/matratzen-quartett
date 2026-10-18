@@ -122,9 +122,9 @@ function makeCard(rarity: Rarity, imageUrl = ''): Card {
     condition: rarity === 'legendary' ? 'poor' : rarity === 'epic' ? 'fair' : 'good',
     stats: {
       witterung: values[0],
-      ambiente: values[1],
-      komfort: values[2],
-      format: values[3],
+      flecken: values[1],
+      ambiente: values[2],
+      komfort: values[3],
       charakter: values[4],
     },
     photographer_id: 'demo-local',
@@ -145,11 +145,11 @@ function starterCards(): Card[] {
     'Federkern auf Abwegen',
   ]
   const stats = [
-    { witterung: 25, ambiente: 45, komfort: 90, format: 75, charakter: 30 },
-    { witterung: 50, ambiente: 30, komfort: 55, format: 65, charakter: 95 },
-    { witterung: 95, ambiente: 45, komfort: 20, format: 55, charakter: 65 },
-    { witterung: 35, ambiente: 95, komfort: 40, format: 50, charakter: 65 },
-    { witterung: 45, ambiente: 35, komfort: 65, format: 95, charakter: 40 },
+    { witterung: 25, flecken: 35, ambiente: 45, komfort: 90, charakter: 30 },
+    { witterung: 50, flecken: 55, ambiente: 30, komfort: 55, charakter: 95 },
+    { witterung: 95, flecken: 65, ambiente: 45, komfort: 20, charakter: 65 },
+    { witterung: 35, flecken: 45, ambiente: 95, komfort: 40, charakter: 65 },
+    { witterung: 45, flecken: 95, ambiente: 35, komfort: 65, charakter: 40 },
   ]
   const rarities: Rarity[] = ['common', 'common', 'common', 'common', 'common']
 
@@ -377,7 +377,7 @@ export const useDemoGameStore = create<DemoGameState>()(
     }),
     {
       name: 'matratzen-quartett-demo-game-v1',
-      version: 2,
+      version: 3,
       migrate: migrateDemoCards,
       onRehydrateStorage: () => (_state, error) => {
         if (error) {

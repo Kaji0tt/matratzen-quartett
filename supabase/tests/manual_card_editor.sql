@@ -27,7 +27,7 @@ SELECT set_config('test.manual_data', '{
   "name":"PNG-Patina","description":"Ein manuelles Bordsteinjuwel mit neonfarbener Patina.",
   "city":"Berlin","location":"Testviertel","country":"DE","condition":"fair","rarity":"rare","notes":"Manuell erstellt",
   "image_url":"https://example.invalid/storage/v1/object/public/manual-card-images/95000000-0000-0000-0000-000000000001/96000000-0000-0000-0000-000000000001.png",
-  "stats":{"witterung":85,"ambiente":75,"komfort":60,"format":50,"charakter":30}
+  "stats":{"witterung":85,"flecken":47,"ambiente":75,"komfort":63,"charakter":30}
 }', TRUE);
 SELECT set_config('test.manual_save', $q$SELECT public.save_manual_card(
   '95000000-0000-0000-0000-000000000001', 0,
@@ -62,7 +62,7 @@ DO $$ BEGIN
     RAISE EXCEPTION 'Manual card was not published';
   END IF;
   IF NOT EXISTS (SELECT 1 FROM public.cards WHERE id='95000000-0000-0000-0000-000000000001'
-    AND stat_witterung=85 AND stat_ambiente=75 AND stat_komfort=60 AND stat_format=50
+    AND stat_witterung=85 AND stat_ambiente=75 AND stat_komfort=63 AND stat_flecken=47
     AND stat_charakter=30 AND NOT stats_need_review) THEN
     RAISE EXCEPTION 'Manual editor did not publish the exact new attributes';
   END IF;

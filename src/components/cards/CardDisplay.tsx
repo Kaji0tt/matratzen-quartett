@@ -3,6 +3,7 @@ import { MapPin, Star } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { cn, getRarityLabel } from '@/lib/utils'
 import type { Card, Rarity } from '@/types'
+import { STAT_FIELDS } from '@/types/card-stats'
 
 interface CardDisplayProps {
   card: Card
@@ -142,22 +143,16 @@ function CardFront({ card, size, showStats }: CardFrontProps) {
 
         {showStats && isLarge && (
           <div className="mt-2 grid grid-cols-2 gap-1">
-            {Object.entries({
-              '📅': card.stats.alter,
-              '🩹': card.stats.flecken,
-              '☀️': card.stats.witterung,
-              '👃': card.stats.geruch,
-              '🦠': card.stats.kontaminierung,
-            }).map(([emoji, val]) => (
-              <div key={emoji} className="flex items-center gap-1">
-                <span className="text-xs">{emoji}</span>
+            {STAT_FIELDS.map(({ key, label }) => (
+              <div key={key} className="flex items-center gap-1" aria-label={`${label}: ${card.stats[key]}`}>
+                <span className="text-xs">{label}</span>
                 <div className="flex-1 h-1 bg-slate-700 rounded-full overflow-hidden">
                   <div
                     className="h-full bg-primary rounded-full"
-                    style={{ width: `${val}%` }}
+                    style={{ width: `${card.stats[key]}%` }}
                   />
                 </div>
-                <span className="text-xs text-muted-foreground w-6 text-right">{val}</span>
+                <span className="text-xs text-muted-foreground w-6 text-right">{card.stats[key]}</span>
               </div>
             ))}
           </div>

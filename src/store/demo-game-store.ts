@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { BoosterPack, Card, Rarity } from '@/types'
+import { migrateDemoCards } from '@/lib/demo-card-migration'
+import { toast } from '@/hooks/use-toast'
 
 export type DemoEventName =
   | 'upload_started'
@@ -87,7 +89,7 @@ const cities = ['Berlin', 'Hamburg', 'Köln', 'Leipzig', 'Dortmund', 'München']
 const locations = ['am Späti', 'neben dem Altglas', 'hinterm Kiosk', 'auf dem Gehweg']
 const abilities = [
   'Muffwolke: Gegnerische Werte -5 in der ersten Runde',
-  'Federkern: Flauschigkeit +8',
+  'Federkern: Komfort +8',
   'Bürgersteig-Tarnung: Bei Gleichstand gewinnt diese Karte',
   'Fundstück des Tages: +5 Prestige',
 ]
@@ -98,8 +100,12 @@ function makeId(): string {
 }
 
 function makeCard(rarity: Rarity, imageUrl = ''): Card {
-  const base = rarityRank[rarity] * 7
-  const roll = () => Math.min(100, Math.floor(24 + base + Math.random() * 63))
+  const values = Array.from({ length: 5 }, () => Math.floor(10 + Math.random() * 76))
+  values[Math.floor(Math.random() * values.length)] = Math.floor(86 + Math.random() * 15)
+  while (values.reduce((sum, value) => sum + value, 0) > 300) {
+    const index = values.findIndex((value) => value > 10 && value <= 85)
+    values[index] -= 1
+  }
 
   return {
     id: makeId(),
@@ -117,11 +123,11 @@ function makeCard(rarity: Rarity, imageUrl = ''): Card {
     country: 'DE',
     condition: rarity === 'legendary' ? 'poor' : rarity === 'epic' ? 'fair' : 'good',
     stats: {
-      alter: roll(),
-      flecken: roll(),
-      witterung: roll(),
-      geruch: roll(),
-      kontaminierung: roll(),
+      witterung: values[0],
+      ambiente: values[1],
+      komfort: values[2],
+      format: values[3],
+      charakter: values[4],
     },
     photographer_id: 'demo-local',
     photographer_username: 'Demo-Spiel',
@@ -141,11 +147,11 @@ function starterCards(): Card[] {
     'Federkern auf Abwegen',
   ]
   const stats = [
-    { alter: 63, flecken: 54, witterung: 48, geruch: 57, kontaminierung: 42 },
-    { alter: 48, flecken: 61, witterung: 59, geruch: 44, kontaminierung: 53 },
-    { alter: 72, flecken: 49, witterung: 67, geruch: 62, kontaminierung: 58 },
-    { alter: 55, flecken: 72, witterung: 52, geruch: 68, kontaminierung: 61 },
-    { alter: 81, flecken: 66, witterung: 74, geruch: 70, kontaminierung: 57 },
+    { witterung: 25, ambiente: 45, komfort: 90, format: 75, charakter: 30 },
+    { witterung: 50, ambiente: 30, komfort: 55, format: 65, charakter: 95 },
+    { witterung: 95, ambiente: 45, komfort: 20, format: 55, charakter: 65 },
+    { witterung: 35, ambiente: 95, komfort: 40, format: 50, charakter: 65 },
+    { witterung: 45, ambiente: 35, komfort: 65, format: 95, charakter: 40 },
   ]
   const rarities: Rarity[] = ['common', 'common', 'uncommon', 'common', 'uncommon']
 
@@ -371,6 +377,16 @@ export const useDemoGameStore = create<DemoGameState>()(
         }
       }),
     }),
-    { name: 'matratzen-quartett-demo-game-v1' },
+    {
+      name: 'matratzen-quartett-demo-game-v1',
+      version: 1,
+      migrate: migrateDemoCards,
+      onRehydrateStorage: () => (_state, error) => {
+        if (error) {
+          console.error('Demo-Spielstand konnte nicht geladen werden', error)
+          toast({ title: 'Demo-Spielstand konnte nicht geladen werden', description: 'Die gespeicherten Daten bleiben im Browser erhalten. Bitte den Spielstand prüfen, bevor du weiterspielst.', variant: 'destructive' })
+        }
+      },
+    },
   ),
 )

@@ -6,14 +6,11 @@ import { StreetCard } from '@/components/cards/StreetCard'
 import { getRarityLabel } from '@/lib/utils'
 import { useBoosterCarousel } from './use-booster-carousel'
 import type { Card, CardStats } from '@/types'
+import { STAT_LABELS } from '@/types/card-stats'
 
 interface BoosterOpeningProps {
   cards: Card[]
   onComplete: () => void
-}
-
-const STAT_LABELS: Record<keyof CardStats, string> = {
-  alter: 'Alter', flecken: 'Flecken', witterung: 'Witterung', geruch: 'Geruch', kontaminierung: 'Kontamination',
 }
 
 const FRACTURE_EDGE = [

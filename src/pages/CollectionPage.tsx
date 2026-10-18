@@ -25,42 +25,42 @@ const DEMO_CARDS: Card[] = [
   {
     id: '1', name: 'Berliner Bürgersteig-Bett', description: 'Ein klassischer Fund aus Prenzlauer Berg.',
     rarity: 'common', image_url: '', location: 'Schönhauser Allee', city: 'Berlin', country: 'DE',
-    condition: 'good', stats: { alter: 65, flecken: 70, witterung: 60, geruch: 50, kontaminierung: 40 },
+    condition: 'good', stats: { witterung: 60, ambiente: 35, komfort: 65, format: 80, charakter: 30 },
     photographer_id: '1', photographer_username: 'berlinlens', created_at: '2024-01-15T10:00:00Z',
     is_approved: true, report_count: 0, attributes: [],
   },
   {
     id: '2', name: 'Hamburger Hafenmatratze', description: 'Direkt am Hafen mit Seeluft imprägniert.',
     rarity: 'uncommon', image_url: '', location: 'Hafenstraße', city: 'Hamburg', country: 'DE',
-    condition: 'fair', stats: { alter: 80, flecken: 75, witterung: 90, geruch: 70, kontaminierung: 65 },
+    condition: 'fair', stats: { witterung: 90, ambiente: 75, komfort: 20, format: 50, charakter: 45 },
     photographer_id: '2', photographer_username: 'hamburgfoto', created_at: '2024-02-01T14:00:00Z',
     is_approved: true, report_count: 0, attributes: [],
   },
   {
     id: '3', name: 'Münchner Oktoberfest-Rest', description: 'Nach dem Fest übrig geblieben. Legendary.',
     rarity: 'legendary', image_url: '', location: 'Theresienwiese', city: 'München', country: 'DE',
-    condition: 'poor', stats: { alter: 95, flecken: 85, witterung: 80, geruch: 85, kontaminierung: 95 },
+    condition: 'poor', stats: { witterung: 80, ambiente: 65, komfort: 10, format: 45, charakter: 95 },
     photographer_id: '3', photographer_username: 'muenchenclick', created_at: '2024-03-10T08:00:00Z',
     is_approved: true, report_count: 0, edition_number: 1, total_editions: 10, attributes: [],
   },
   {
     id: '4', name: 'Kölner Dom-Nähe-Matratze', description: 'Mit Aussicht auf den Dom.',
     rarity: 'rare', image_url: '', location: 'Domstraße', city: 'Köln', country: 'DE',
-    condition: 'excellent', stats: { alter: 50, flecken: 55, witterung: 75, geruch: 45, kontaminierung: 35 },
+    condition: 'excellent', stats: { witterung: 15, ambiente: 95, komfort: 80, format: 60, charakter: 20 },
     photographer_id: '4', photographer_username: 'koelnfotograf', created_at: '2024-04-05T12:00:00Z',
     is_approved: true, report_count: 0, attributes: [],
   },
   {
     id: '5', name: 'Frankfurter Banken-Viertel-Fund', description: 'High-Society-Matratze.',
     rarity: 'epic', image_url: '', location: 'Bankenviertel', city: 'Frankfurt', country: 'DE',
-    condition: 'mint', stats: { alter: 30, flecken: 10, witterung: 20, geruch: 15, kontaminierung: 5 },
+    condition: 'mint', stats: { witterung: 5, ambiente: 35, komfort: 95, format: 85, charakter: 30 },
     photographer_id: '5', photographer_username: 'frankfurtsnap', created_at: '2024-05-20T16:00:00Z',
     is_approved: true, report_count: 0, attributes: [],
   },
   {
     id: '6', name: 'Stuttgarter Weinberg-Lager', description: 'Zwischen Reben gefunden.',
     rarity: 'uncommon', image_url: '', location: 'Rotenberg', city: 'Stuttgart', country: 'DE',
-    condition: 'good', stats: { alter: 55, flecken: 45, witterung: 50, geruch: 40, kontaminierung: 35 },
+    condition: 'good', stats: { witterung: 50, ambiente: 80, komfort: 55, format: 35, charakter: 65 },
     photographer_id: '6', photographer_username: 'stuttgartpix', created_at: '2024-06-12T09:00:00Z',
     is_approved: true, report_count: 0, attributes: [],
   },
@@ -95,12 +95,13 @@ export function CollectionPage() {
         id: row.id, name: row.name, description: row.description, rarity: row.rarity,
         image_url: row.image_url, location: row.location, city: row.city, country: row.country,
         condition: row.condition, stats: {
-          alter: row.stat_alter, flecken: row.stat_flecken, witterung: row.stat_witterung,
-          geruch: row.stat_geruch, kontaminierung: row.stat_kontaminierung,
+          witterung: row.stat_witterung, ambiente: row.stat_ambiente, komfort: row.stat_komfort,
+          format: row.stat_format, charakter: row.stat_charakter,
         },
         photographer_id: row.photographer_id, photographer_username: row.profiles?.username ?? 'Unbekannt',
         created_at: row.created_at, is_approved: row.is_approved, report_count: row.report_count,
-        notes: row.notes ?? undefined, attributes: [],
+        notes: row.notes ?? undefined,
+        attributes: row.stats_need_review ? [{ key: 'Werteprüfung', value: 'Altbestand: Ambiente, Komfort, Format und Charakter sind vorläufig auf 50 gesetzt und müssen geprüft werden.' }] : [],
       }))
       return {
         cards: liveCards, ownedIds: ownershipResult.data.map((row) => row.card_id),
@@ -141,7 +142,7 @@ export function CollectionPage() {
 
   return (
     <div className="street-screen collection-screen">
-      <StreetPageHeader first="Lost &" accent="Laid" subtitle="Deine Bordsteinjuwelen" />
+      <StreetPageHeader first="Lost &" accent="Laid" subtitle="Dein Bestand" />
       <section className="home-panel collection-overview" aria-label="Sammlungsfortschritt">
         <div>
           <span className="home-brush-label home-brush-label--small">STREET ARCHIVE</span>
@@ -296,6 +297,9 @@ function CardDetailModal({ card, onClose }: { card: Card; onClose: () => void })
           <div>
             <DialogTitle className="text-xl font-bold text-white mb-1">{card.name}</DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground mb-4">{card.description}</DialogDescription>
+            {card.attributes.filter((attribute) => attribute.key === 'Werteprüfung').map((attribute) => (
+              <p key={attribute.key} className="mb-4 text-sm text-amber-200">{attribute.value}</p>
+            ))}
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Stadt</span>

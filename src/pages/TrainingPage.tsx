@@ -8,13 +8,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { getDemoDayKey, useDemoGameStore, type DemoMatchMode, type DemoMatchResult } from '@/store/demo-game-store'
 import type { Card as GameCard, CardStats } from '@/types'
 
-const statLabels: Record<keyof CardStats, string> = {
-  alter: 'Alter',
-  flecken: 'Flecken',
-  witterung: 'Witterung',
-  geruch: 'Geruch',
-  kontaminierung: 'Kontaminierung',
-}
+import { STAT_LABELS as statLabels } from '@/types/card-stats'
 
 interface MatchState {
   id: string

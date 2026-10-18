@@ -15,14 +15,14 @@ const DEMO_TRADE_CARDS: CardType[] = [
   {
     id: '1', name: 'Berliner Bürgersteig-Bett', description: '', rarity: 'common',
     image_url: '', location: '', city: 'Berlin', country: 'DE', condition: 'good',
-    stats: { alter: 65, flecken: 70, witterung: 60, geruch: 50, kontaminierung: 40 },
+    stats: { witterung: 60, ambiente: 35, komfort: 65, format: 80, charakter: 30 },
     photographer_id: '1', photographer_username: 'berliner', created_at: '',
     is_approved: true, report_count: 0, attributes: [],
   },
   {
     id: '2', name: 'Hamburger Hafenmatratze', description: '', rarity: 'rare',
     image_url: '', location: '', city: 'Hamburg', country: 'DE', condition: 'fair',
-    stats: { alter: 80, flecken: 75, witterung: 90, geruch: 70, kontaminierung: 65 },
+    stats: { witterung: 90, ambiente: 75, komfort: 20, format: 50, charakter: 45 },
     photographer_id: '2', photographer_username: 'hamburger', created_at: '',
     is_approved: true, report_count: 0, attributes: [],
   },

@@ -2,22 +2,26 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { parseAIResult, validStats } from '../functions/review-submission/validation.ts'
 
-const stats = { alter: 85, flecken: 75, witterung: 60, geruch: 50, kontaminierung: 30 }
-const result = { name: 'Laternen-Luxus', description: 'Ein Bordsteinjuwel mit Straßenpatina.', stats, reasoning: 'Stärken werden durch niedrige Geruchswerte ausgeglichen.' }
+const stats = { witterung: 85, ambiente: 75, komfort: 60, format: 50, charakter: 30 }
+const result = {
+  name: 'Laternen-Luxus', description: 'Ein Bordsteinjuwel mit Straßenpatina.', stats,
+  reasoning: 'Stärken werden durch niedrigeren Komfort und Charakter ausgeglichen.',
+  text_review: { needs_review: false, reasoning: 'Die Fundbeschreibung passt zum Quartettstil.' },
+}
 
 test('accepts an actual AI-shaped result at the 300 point budget', () => {
   assert.equal(Object.values(parseAIResult(result).stats).reduce((a, b) => a + b), 300)
 })
 test('rejects over-budget and multiple peak stats without silently normalizing', () => {
-  assert.throws(() => parseAIResult({ ...result, stats: { ...stats, alter: 86 } }), /Balancing/)
-  assert.throws(() => parseAIResult({ ...result, stats: { alter: 86, flecken: 86, witterung: 0, geruch: 0, kontaminierung: 0 } }), /Balancing/)
+  assert.throws(() => parseAIResult({ ...result, stats: { ...stats, witterung: 86 } }), /Balancing/)
+  assert.throws(() => parseAIResult({ ...result, stats: { witterung: 86, ambiente: 86, komfort: 0, format: 0, charakter: 0 } }), /Balancing/)
 })
 test('accepts one peak balanced with weaknesses', () => {
-  assert.equal(parseAIResult({ ...result, stats: { ...stats, alter: 100, flecken: 0 } }).stats.alter, 100)
+  assert.equal(parseAIResult({ ...result, stats: { ...stats, witterung: 100, ambiente: 0 } }).stats.witterung, 100)
 })
 test('rejects malformed stats, strings, fractions, extras and missing keys', () => {
-  for (const invalid of [null, [], {}, { ...stats, alter: '50' }, { ...stats, alter: -1 },
-    { ...stats, alter: 101 }, { ...stats, alter: 50.5 }, { ...stats, bonus: 1 }]) {
+  for (const invalid of [null, [], {}, { ...stats, witterung: '50' }, { ...stats, witterung: -1 },
+    { ...stats, witterung: 101 }, { ...stats, witterung: 50.5 }, { ...stats, bonus: 1 }]) {
     assert.equal(validStats(invalid), false)
   }
 })

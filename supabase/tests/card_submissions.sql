@@ -29,8 +29,9 @@ SELECT set_config('test.submission_data', jsonb_build_object(
   'captured_at', now(), 'city', 'Berlin', 'location', 'Bordstein',
   'country', 'DE', 'found_on', CURRENT_DATE, 'condition', 'fair',
   'observations', 'Viele Flecken, eine Ecke eingerissen',
+  'name', 'Meine Bordsteinliege', 'description', 'Sie wartet unter der Laterne auf den nächsten Umzug.',
   'surroundings', 'Unter einer Laterne', 'discovery_story', 'Beim Spaziergang entdeckt',
-  'proposed_stats', '{"alter":100,"flecken":100,"witterung":100,"geruch":100,"kontaminierung":100}'::JSONB
+  'proposed_stats', '{"witterung":100,"ambiente":100,"komfort":100,"format":100,"charakter":100}'::JSONB
 )::TEXT, TRUE);
 
 SET LOCAL ROLE anon;
@@ -43,6 +44,12 @@ SELECT public.create_card_submission('92000000-0000-0000-0000-000000000001', cur
 -- Retrying the same request does not create another submission.
 SELECT public.create_card_submission('92000000-0000-0000-0000-000000000001', current_setting('test.submission_data')::JSONB);
 SELECT public.create_card_submission('92000000-0000-0000-0000-000000000002', current_setting('test.submission_data')::JSONB);
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM public.card_submissions WHERE submitted_name <> 'Meine Bordsteinliege'
+    OR name <> submitted_name OR description <> submitted_description) THEN
+    RAISE EXCEPTION 'Player originals were not preserved in the initial draft';
+  END IF;
+END $$;
 SELECT pg_temp.expect_error($q$UPDATE public.card_submissions SET status = 'approved'$q$, '42501');
 SELECT pg_temp.expect_error($q$INSERT INTO public.cards (name) VALUES ('Bypass')$q$, '42501');
 SELECT pg_temp.expect_error($q$SELECT public.claim_submission_ai(
@@ -87,13 +94,13 @@ END $$;
 UPDATE public.card_submissions SET status = 'pending_review',
   ai_result = '{"reasoning":"Stärken mit Schwächen ausbalanciert"}',
   name = 'Bordsteinjuwel', description = 'Ein Fund mit ordentlich Straßenpatina.',
-  final_stats = '{"alter":70,"flecken":60,"witterung":50,"geruch":40,"kontaminierung":30}'
+  final_stats = '{"witterung":70,"ambiente":60,"komfort":50,"format":40,"charakter":30}'
 WHERE id = '92000000-0000-0000-0000-000000000001';
 RESET ROLE;
 SELECT set_config('request.jwt.claim.sub', '91000000-0000-0000-0000-000000000003', TRUE);
 SELECT set_config('test.moderation_data', '{
   "name":"Laternen-Luxus","description":"Eine Legende zwischen Laterne und Bordstein.",
-  "stats":{"alter":85,"flecken":75,"witterung":60,"geruch":50,"kontaminierung":30},
+  "stats":{"witterung":85,"ambiente":75,"komfort":60,"format":50,"charakter":30},
   "rarity":"rare","notes":"Manuell geprüft"
 }', TRUE);
 SET LOCAL ROLE authenticated;
@@ -114,12 +121,12 @@ SELECT pg_temp.expect_error($q$SELECT public.moderate_card_submission(
   '92000000-0000-0000-0000-000000000001',
   (SELECT updated_at FROM public.card_submissions WHERE id = '92000000-0000-0000-0000-000000000001'),
   'publish', jsonb_set(current_setting('test.moderation_data')::JSONB, '{stats}',
-    '{"alter":100,"flecken":100,"witterung":100,"geruch":100,"kontaminierung":100}'))$q$);
+    '{"witterung":100,"ambiente":100,"komfort":100,"format":100,"charakter":100}'))$q$);
 SELECT pg_temp.expect_error($q$SELECT public.moderate_card_submission(
   '92000000-0000-0000-0000-000000000001',
   (SELECT updated_at FROM public.card_submissions WHERE id = '92000000-0000-0000-0000-000000000001'),
   'publish', jsonb_set(current_setting('test.moderation_data')::JSONB, '{stats}',
-    '{"alter":86,"flecken":86,"witterung":0,"geruch":0,"kontaminierung":0}'))$q$);
+    '{"witterung":86,"ambiente":86,"komfort":0,"format":0,"charakter":0}'))$q$);
 SELECT pg_temp.expect_error($q$SELECT public.moderate_card_submission(
   '92000000-0000-0000-0000-000000000001', now() - INTERVAL '1 day',
   'save', current_setting('test.moderation_data')::JSONB)$q$);
@@ -153,6 +160,15 @@ SELECT public.moderate_card_submission(
   'reject', '{"notes":"Kein geeigneter Fund"}');
 RESET ROLE;
 DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM public.card_submissions s JOIN public.cards c ON c.id = s.card_id
+    WHERE s.id = '92000000-0000-0000-0000-000000000001'
+      AND s.submitted_name = 'Meine Bordsteinliege'
+      AND s.submitted_description = 'Sie wartet unter der Laterne auf den nächsten Umzug.'
+      AND s.name = 'Laternen-Luxus' AND c.name = s.name
+      AND c.stat_witterung = 85 AND c.stat_ambiente = 75 AND c.stat_komfort = 60
+      AND c.stat_format = 50 AND c.stat_charakter = 30 AND NOT c.stats_need_review
+  ) THEN RAISE EXCEPTION 'Published attributes or unchanged player originals are incorrect'; END IF;
   IF (SELECT count(*) FROM public.user_cards WHERE user_id = '91000000-0000-0000-0000-000000000001') <> 1
     OR (SELECT count(*) FROM public.cards WHERE photographer_id = '91000000-0000-0000-0000-000000000001') <> 1
     OR (SELECT cards_contributed FROM public.profiles WHERE id = '91000000-0000-0000-0000-000000000001') <> 1

@@ -179,13 +179,28 @@ Die SQL-Migrationen stehen in `supabase/migrations/` in numerischer Reihenfolge.
 # supabase/migrations/20261017202515_card_submissions.sql
 # supabase/migrations/20261017212221_manual_card_editor.sql
 # supabase/migrations/20261017212724_manual_card_optional_owner.sql
+# supabase/migrations/20261018100611_diverse_card_attributes.sql
 ```
 
 ### Matratzen einreichen, KI-Prüfung und Freigabe
 
 `/submit` verlangt eine Anmeldung und führt durch **Live-Kamera mit Bildausschnitt → Stat-Vorschläge → Funddetails**. Es gibt weder Galerie-/Dateiupload noch Demo-Einreichungen. Die Kamera benötigt HTTPS (oder localhost) und eine Kameraberechtigung. Nach der Aufnahme lässt sich der Ausschnitt per Ziehen oder Regler verschieben und zoomen; wählbar sind Originalformat, 4:3, 1:1 und 3:4. Erst nach **Ausschnitt übernehmen** ist der nächste Schritt möglich. Der bestätigte Ausschnitt wird als JPEG mit maximal 1600 Pixel Kantenlänge und 5 MB gespeichert; Canvas entfernt dabei ursprüngliche EXIF-Metadaten. Vor dem Upload lässt sich aus derselben Originalaufnahme erneut zuschneiden oder neu fotografieren; nach erfolgreichem Upload bleiben Bildänderungen für diesen Einreichungsversuch gesperrt. Der Aufnahmezeitpunkt bleibt beim Zuschneiden erhalten. Ohne Kamera bleibt die Einreichung gesperrt. Eine Web-App kann manipulierte API-Clients nicht beweissicher als echte Kameraaufnahmen authentifizieren.
 
-Funddetails fragen Stadt, Viertel/Fundort, Land, Funddatum, Zustand sowie Stichpunkte zu Auffälligkeiten, Umgebung und optional zur Fundgeschichte ab. Keine Personen, Kennzeichen, privaten Adressen oder vertraulichen Inhalte aufnehmen. Vor dem Absenden ist die Zustimmung zur Veröffentlichung und KI-Verarbeitung erforderlich.
+Funddetails fragen einen **selbst geschriebenen Kartennamen (2–80 Zeichen) und Kartentext (10–1000 Zeichen)** sowie Stadt, Viertel/Fundort, Land, Funddatum, Zustand und Stichpunkte zu Auffälligkeiten, Umgebung und optional zur Fundgeschichte ab. Die eigenen Texte sind Pflicht und werden getrennt von der Moderationsfassung aufbewahrt. Keine Personen, Kennzeichen, privaten Adressen oder vertraulichen Inhalte aufnehmen. Vor dem Absenden ist die Zustimmung zur Veröffentlichung und KI-Verarbeitung einschließlich Kartenname und Beschreibung erforderlich.
+
+Die fünf Spielattribute sind in dieser Reihenfolge **Witterung · Ambiente · Komfort · Format · Charakter**. Jeder Wert ist ganzzahlig von 0 bis 100; höher gewinnt:
+
+| Attribut | Bewertungsmaßstab |
+|---|---|
+| Witterung | Sichtbare Spuren von Regen, Sonne und Straßenleben. Hoch bedeutet stark verwittert; Flecken allein belegen keine Witterung. |
+| Ambiente | Besonderheit der Fundszene: Umgebung, Platzierung und absurde Kombinationen. Keine Bewertung von Fotoqualität oder gefährlichen Fundorten. |
+| Komfort | Wie intakt, eben und gepolstert die Matratze wirkt. Hoch bedeutet bequem wirkend, nicht sauber; kein Anfassen oder Liegetest. |
+| Format | Geschätzte ursprüngliche Liegefläche: Kinder-/kleine Matratze ca. 10–25, Einzelmatratze 40–55, Doppelmatratze 70–85, außergewöhnlich groß über 85. Perspektive und Faltung zählen nicht als Größe. |
+| Charakter | Besonderheiten der Matratze selbst: Muster, Form, Konstruktion, ungewöhnliche Reparaturen. Unabhängig von Fundort, Ekel und Booster-Seltenheit. |
+
+Die KI bewertet die Achsen unabhängig anhand der **textlichen Fundangaben**, nicht anhand des Fotos. Fehlende Informationen ergeben vorläufig 50 mit ausdrücklichem Unsicherheitshinweis in der Begründung. Neue Matratzen können durch Komfort oder Format überzeugen; Verfall ist kein universeller Bonus. Die Hinweise im Formular und im KI-Prompt verwenden dieselbe zentrale Attributdefinition.
+
+Die neue Migration ergänzt die vier neuen Datenbankspalten und aktualisiert beide Freigabewege. **Altbestand wird nicht semantisch umetikettiert:** Witterung bleibt erhalten, die vier neuen Werte sind vorläufig 50 und werden sichtbar als prüfbedürftig markiert. Alte Datenbankspalten und die früheren Vorschlags-/Endwerte von Einreichungen bleiben als Historie erhalten; bestehende Texte und KI-Ergebnisse bleiben erhalten. Eine manuelle Werteprüfung hebt die Markierung auf. Lokale Demo-Spielstände werden unter Erhalt von Karten, Guthaben und Fortschritt migriert; neue Demo-Karten erhalten voneinander unabhängige Stärken ohne Seltenheitsbonus. Datenbankmigration, Edge Function und Frontend müssen zusammen ausgerollt werden; diese Änderung führt kein automatisches Remote-Deployment aus.
 
 Die Migration `20261017202515_card_submissions.sql` benötigt Migration 004. Sie richtet ein:
 
@@ -206,11 +221,17 @@ supabase --profile matratzen-quartett functions deploy review-submission --use-a
 
 Nach dem Speichern startet der Client die KI-Prüfung. Ein unterbrochener oder fehlgeschlagener Aufruf lässt den Fund bestehen und kann unter `/submissions` erneut gestartet werden (maximal drei tatsächliche KI-Versuche; ein fehlender API-Key verbraucht keinen Versuch). Eine nach zwei Minuten abgebrochene Verarbeitung darf erneut beansprucht werden. Ohne erfolgreiche KI-Prüfung ist keine Freigabe möglich; es gibt keine vorgetäuschte KI-Antwort.
 
-An OpenAI gehen **nur** Stadt, Zustand, Fund-Stichpunkte, Stat-Vorschläge, Stilvorgabe und aggregierte Vergleichswerte der letzten maximal 200 freigegebenen Karten – nicht Foto, genauer Fundort, Benutzername oder private Chats. Die KI liefert Namen, Kartentext, geprüfte Werte und eine Balancing-Begründung. Verbindlich für neue Karten: ganzzahlige Stats von 0 bis 100, insgesamt maximal **300 Punkte** und höchstens **ein Wert über 85**. Diese Grenzen werden im Backend und nochmals bei der manuellen Freigabe geprüft. Alte Karten werden nicht verändert.
+An OpenAI gehen **nur** der eingereichte Kartenname und Kartentext, Stadt, Zustand, Fund-Stichpunkte, Stat-Vorschläge, Stilvorgabe, aggregierte Vergleichswerte der letzten maximal 200 freigegebenen Karten sowie Namen und Beschreibungen von höchstens acht dieser Karten als Stilbeispiele – nicht Foto, genauer Fundort, Benutzername oder private Chats.
+
+Die KI **schreibt keine Ersatztexte**: Sie gibt den Spielertext unverändert oder mit notwendigen Rechtschreib-/Grammatikkorrekturen zurück. Bedeutung, Humor, Dialekt und individuelle Wortwahl müssen erhalten bleiben. Die Korrektur wird ausschließlich als Vorschlag im KI-Ergebnis gespeichert; weder die Originalfelder noch die Moderationsfassung werden automatisch überschrieben. Eine getrennte Textbewertung (`text_review.needs_review` mit Begründung) markiert deutliche Stilabweichungen, unpassende Inhalte oder Widersprüche. Auffällige Texte bleiben erhalten, damit die Moderation sie prüfen, korrigieren oder ablehnen kann. Individuelle Texte sind nicht pauschal ein Problem; die Stilvorgabe ist ein Bewertungsmaßstab und kein Umschreibauftrag. Bei alten Einreichungen ohne getrennte Originalfelder prüft die KI die vorhandene Fassung, ersatzweise die Fundbeobachtungen; diese werden nicht nachträglich als Spieleroriginal ausgewiesen.
+
+Die KI liefert außerdem geprüfte Werte und eine separate Balancing-Begründung. Verbindlich für neue Karten: ganzzahlige Stats von 0 bis 100, insgesamt maximal **300 Punkte** und höchstens **ein Wert über 85**. Diese Grenzen werden im Backend und nochmals bei der manuellen Freigabe geprüft.
 
 Über **Profilbild → Meine Einreichungen** sind alle eigenen Einreichungen mit Foto, Status, Funddetails, Stat-Vergleich und Moderationsrückmeldung paginiert sichtbar. Zustände: KI ausstehend, KI prüft, KI fehlgeschlagen, wartet auf Freigabe, Veröffentlichung läuft, freigegeben oder abgelehnt.
 
 Über **Administration → Karten** können bestehende Admins und Moderatoren Entwürfe vor der Freigabe bearbeiten (Name, Text, Stats, Seltenheit und Rückmeldung) oder mit Begründung ablehnen. Veraltete Bearbeitungsstände werden abgewiesen. Nach manueller Zustimmung erhält das Foto eine serverseitig geschützte Kopie unter `card-images/approved/`. Bei einem unterbrochenen Upload bleibt der Status „Veröffentlichung läuft“; die Moderation kann die Veröffentlichung erneut abschließen. Erst nach erfolgreicher Veröffentlichung wird die Karte spielbar und die Besitzkopie vergeben. Doppeltes Freigeben erzeugt keine zweite Karte/Kopie.
+
+Originaltext, KI-Texthinweis und Korrekturvorschlag werden getrennt angezeigt. Nur die Moderation kann den Korrekturvorschlag ausdrücklich in die bearbeitbare Fassung übernehmen; gespeichert wird anschließend über die bestehenden Moderationsaktionen. Das Spieleroriginal bleibt auch nach manuellen Änderungen erhalten.
 
 **Ersten Admin selbst setzen:** Wie vereinbart wird kein Konto automatisch hochgestuft. Im Supabase SQL Editor mit dem eigenen registrierten Benutzernamen ausführen, anschließend das Profil neu laden:
 
@@ -225,7 +246,8 @@ Angemeldete Spieler sehen in `/collection` den echten freigegebenen Supabase-Kat
 **Validierung:**
 
 ```powershell
-node --test supabase\tests\submission_ai.test.mjs
+npm run test:cards
+supabase --profile matratzen-quartett db query --linked --file supabase\tests\card_attributes.sql
 supabase --profile matratzen-quartett db query --linked --file supabase\tests\card_submissions.sql
 npm run build
 npm run lint
@@ -332,7 +354,7 @@ Vollständige Dokumentation: **[PRD.md](./PRD.md)**
 
 Kernentitäten:
 - `profiles` – User-Profile mit Level, XP, Elo, Coins
-- `cards` – Matratzen-Karten mit 5 Stats (Flauschigkeit, Patina, Größe, Auffindbarkeit, Prestige)
+- `cards` – Matratzen-Karten mit 5 Stats (Witterung, Ambiente, Komfort, Format, Charakter)
 - `user_cards` – Sammlungs-Junction-Tabelle
 - `booster_packs` – Konfigurierbare Pack-Typen mit Seltenheitsgewichtung
 - `trade_offers` – Handelsangebote (inkl. Münz-Komponente)

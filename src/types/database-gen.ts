@@ -398,6 +398,10 @@ export type Database = {
       }
       card_submissions: {
         Row: {
+          submitted_name: string | null
+          submitted_description: string | null
+          legacy_stats: Json | null
+          stats_need_review: boolean
           ai_attempts: number
           ai_error: string | null
           ai_result: Json | null
@@ -428,6 +432,10 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          submitted_name?: string | null
+          submitted_description?: string | null
+          legacy_stats?: Json | null
+          stats_need_review?: boolean
           ai_attempts?: number
           ai_error?: string | null
           ai_result?: Json | null
@@ -458,6 +466,10 @@ export type Database = {
           user_id: string
         }
         Update: {
+          submitted_name?: string | null
+          submitted_description?: string | null
+          legacy_stats?: Json | null
+          stats_need_review?: boolean
           ai_attempts?: number
           ai_error?: string | null
           ai_result?: Json | null
@@ -527,6 +539,11 @@ export type Database = {
       }
       cards: {
         Row: {
+          stat_ambiente: number
+          stat_komfort: number
+          stat_format: number
+          stat_charakter: number
+          stats_need_review: boolean
           city: string
           condition: Database["public"]["Enums"]["card_condition"]
           country: string
@@ -551,6 +568,11 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          stat_ambiente?: number
+          stat_komfort?: number
+          stat_format?: number
+          stat_charakter?: number
+          stats_need_review?: boolean
           city?: string
           condition?: Database["public"]["Enums"]["card_condition"]
           country?: string
@@ -575,6 +597,11 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          stat_ambiente?: number
+          stat_komfort?: number
+          stat_format?: number
+          stat_charakter?: number
+          stats_need_review?: boolean
           city?: string
           condition?: Database["public"]["Enums"]["card_condition"]
           country?: string
@@ -1190,6 +1217,10 @@ export type Database = {
       claim_submission_ai: {
         Args: { p_id: string; p_user_id: string }
         Returns: {
+          submitted_name: string | null
+          submitted_description: string | null
+          legacy_stats: Json | null
+          stats_need_review: boolean
           ai_attempts: number
           ai_error: string | null
           ai_result: Json | null

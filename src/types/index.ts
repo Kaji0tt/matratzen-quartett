@@ -25,11 +25,11 @@ export interface Card {
 }
 
 export interface CardStats {
-  alter: number          // Alter der Matratze (0-100)
-  flecken: number        // Menge/Intensität von Flecken (0-100)
-  witterung: number      // UV-Schäden, Verwitterung, Verformung (0-100)
-  geruch: number         // Muffigkeit, Geruchsintensität (0-100)
-  kontaminierung: number // Hygiene-Risiko / Kontaminierung (0-100)
+  witterung: number
+  ambiente: number
+  komfort: number
+  format: number
+  charakter: number
 }
 
 export interface CardAttribute {

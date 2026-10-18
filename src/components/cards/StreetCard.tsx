@@ -1,10 +1,7 @@
 import { Crown, MapPin } from 'lucide-react'
 import { getRarityLabel } from '@/lib/utils'
-import type { Card, CardStats } from '@/types'
-
-const STAT_LABELS: Record<keyof CardStats, string> = {
-  alter: 'Alter', flecken: 'Flecken', witterung: 'Witterung', geruch: 'Geruch', kontaminierung: 'Kontamination',
-}
+import type { Card } from '@/types'
+import { STAT_FIELDS } from '@/types/card-stats'
 
 export function StreetCard({ card }: { card: Card }) {
   return (
@@ -18,8 +15,8 @@ export function StreetCard({ card }: { card: Card }) {
       <span className="street-card__info">
         <strong className="street-card__name">{card.name}</strong>
         <span className="street-card__location"><MapPin aria-hidden="true" />{card.city}<span> / {card.country}</span></span>
-        <span className="street-card__stats">{Object.entries(STAT_LABELS).map(([key, label]) => {
-          const value = card.stats[key as keyof CardStats]
+        <span className="street-card__stats">{STAT_FIELDS.map(({ key, label }) => {
+          const value = card.stats[key]
           return <span className="street-card__stat" key={key}><span>{label}</span><span className="street-card__value"><span className="street-card__meter"><i style={{ width: `${value}%` }} /></span><b>{value}</b></span></span>
         })}</span>
       </span>

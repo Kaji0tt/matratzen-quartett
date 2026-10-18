@@ -30,6 +30,8 @@ export function SubmitCardPage() {
   const [country, setCountry] = useState('DE')
   const [foundOn, setFoundOn] = useState(new Date().toLocaleDateString('en-CA'))
   const [condition, setCondition] = useState<CardCondition>('good')
+  const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
   const [observations, setObservations] = useState('')
   const [surroundings, setSurroundings] = useState('')
   const [story, setStory] = useState('')
@@ -71,10 +73,11 @@ export function SubmitCardPage() {
           captured_at: capturedAt, city: city.trim(), location: location.trim(), country: country.toUpperCase(),
           found_on: foundOn, condition, observations: observations.trim(), surroundings: surroundings.trim(),
           discovery_story: story.trim(), proposed_stats: { ...stats },
+          name: name.trim(), description: description.trim(),
         },
       })
       if (error) throw error
-      toast({ title: 'Fund gespeichert', description: 'Die KI prüft jetzt deine Stichpunkte und Stat-Vorschläge.' })
+      toast({ title: 'Fund gespeichert', description: 'Die KI prüft deinen Text und die Stat-Vorschläge. Dein Original bleibt erhalten.' })
       try {
         await submissionAction({ id: requestId.current, action: 'generate' })
         toast({ title: 'KI-Prüfung abgeschlossen', description: 'Deine Karte wartet jetzt auf die manuelle Freigabe.' })
@@ -92,7 +95,8 @@ export function SubmitCardPage() {
 
   const detailsValid = city.trim().length >= 2 && location.trim().length >= 2 && /^[A-Z]{2}$/.test(country)
     && !!foundOn && foundOn <= new Date().toLocaleDateString('en-CA') && foundOn >= '2000-01-01'
-    && observations.trim().length >= 10 && surroundings.trim().length >= 3 && consent
+    && observations.trim().length >= 10 && surroundings.trim().length >= 3
+    && name.trim().length >= 2 && description.trim().length >= 10 && consent
 
   return <div className="container mx-auto max-w-lg space-y-6 px-4 py-8">
     <header><h1 className="text-2xl font-bold">Matratze einreichen</h1>
@@ -116,6 +120,13 @@ export function SubmitCardPage() {
         <StatInputs value={stats} onChange={setStats} />
       </>}
       {step === 2 && <div className="space-y-4">
+        <p className="text-sm text-muted-foreground">Du schreibst den Kartentext. Die KI schlägt nur Rechtschreib- und Grammatikkorrekturen vor und markiert auffällige Stilabweichungen für die Moderation. Sie ersetzt deine Geschichte nicht.</p>
+        <label className="block text-sm">Dein Kartenname (2–80 Zeichen)
+          <Input value={name} minLength={2} maxLength={80} onChange={(e) => setName(e.target.value)} />
+        </label>
+        <label className="block text-sm">Deine Kartenbeschreibung (10–1000 Zeichen)
+          <textarea className={textAreaClass} minLength={10} maxLength={1000} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Deine Fund-Legende – knapp, trocken und liebevoll absurd. Dein eigener Ton ist willkommen." />
+        </label>
         <label className="block text-sm">Stadt<Input value={city} maxLength={100} onChange={(e) => setCity(e.target.value)} /></label>
         <label className="block text-sm">Fundort / Viertel (keine private Adresse)<Input value={location} maxLength={150} onChange={(e) => setLocation(e.target.value)} /></label>
         <label className="block text-sm">Land (Ländercode)<Input value={country} maxLength={2} onChange={(e) => setCountry(e.target.value.toUpperCase())} /></label>
@@ -137,7 +148,7 @@ export function SubmitCardPage() {
         </label>
         <label className="flex items-start gap-3 text-sm">
           <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-1" />
-          <span>Das Foto ist von mir und darf im Spiel veröffentlicht werden. Meine Fund-Stichpunkte, Stadt und Stat-Vorschläge dürfen zur Text- und Balancing-Prüfung an OpenAI übermittelt werden. Ich habe keine personenbezogenen oder vertraulichen Daten angegeben. Das Foto selbst wird nicht an OpenAI gesendet.</span>
+          <span>Das Foto ist von mir und darf im Spiel veröffentlicht werden. Mein Kartenname, meine Beschreibung, Fund-Stichpunkte, Stadt und Stat-Vorschläge dürfen zur Text- und Balancing-Prüfung an OpenAI übermittelt werden. Ich habe keine personenbezogenen oder vertraulichen Daten angegeben. Das Foto selbst wird nicht an OpenAI gesendet.</span>
         </label>
       </div>}
     </section>

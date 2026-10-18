@@ -76,6 +76,7 @@ function ManualCardsEditor() {
         <div className="min-w-0 flex-1"><h3 className="break-words font-semibold">{entry.cards.name}</h3>
           <p className="break-words text-sm text-muted-foreground">Besitzer: {entry.user_cards?.profiles?.username ?? entry.user_cards?.user_id ?? 'Keiner'}</p>
           <p className="text-xs text-muted-foreground">Version {entry.revision}</p></div>
+        {entry.cards.stats_need_review && <span className="text-xs text-amber-200">Neue Attribute prüfen</span>}
         <Button variant="outline" disabled={editing !== null} onClick={() => setEditing(entry)}>Bearbeiten</Button>
       </article>)}
       <div className="flex items-center justify-between gap-3">
@@ -100,8 +101,8 @@ function ManualCardForm({ entry, onSaved, onClose }: {
   const [rarity, setRarity] = useState<Rarity>(entry?.cards.rarity ?? 'common')
   const [notes, setNotes] = useState(entry?.cards.notes ?? '')
   const [stats, setStats] = useState(entry ? {
-    alter: entry.cards.stat_alter, flecken: entry.cards.stat_flecken, witterung: entry.cards.stat_witterung,
-    geruch: entry.cards.stat_geruch, kontaminierung: entry.cards.stat_kontaminierung,
+    witterung: entry.cards.stat_witterung, ambiente: entry.cards.stat_ambiente, komfort: entry.cards.stat_komfort,
+    format: entry.cards.stat_format, charakter: entry.cards.stat_charakter,
   } : { ...DEFAULT_STATS })
   const [owner, setOwner] = useState<Owner | null>(entry?.user_cards ? {
     id: entry.user_cards.user_id, username: entry.user_cards.profiles?.username ?? entry.user_cards.user_id,

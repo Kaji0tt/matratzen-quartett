@@ -95,6 +95,14 @@ function SubmissionItem({ submission: s, imageUrl, moderation, onChanged }: {
   const proposed = readStats(s.proposed_stats)
   const aiReasoning = s.ai_result && typeof s.ai_result === 'object' && !Array.isArray(s.ai_result)
     && typeof s.ai_result.reasoning === 'string' ? s.ai_result.reasoning : null
+  const ai = s.ai_result && typeof s.ai_result === 'object' && !Array.isArray(s.ai_result) ? s.ai_result : null
+  const textReview = ai?.text_review && typeof ai.text_review === 'object' && !Array.isArray(ai.text_review)
+    && typeof ai.text_review.needs_review === 'boolean' && typeof ai.text_review.reasoning === 'string'
+    ? ai.text_review : null
+  const correctedName = textReview && typeof ai?.name === 'string' ? ai.name : null
+  const correctedDescription = textReview && typeof ai?.description === 'string' ? ai.description : null
+  const hasCorrections = correctedName !== null && correctedDescription !== null
+    && (correctedName !== (s.submitted_name ?? s.name) || correctedDescription !== (s.submitted_description ?? s.description))
   const canRetry = ['pending_ai', 'ai_failed'].includes(s.status)
     || (s.status === 'ai_reviewing' && !!s.ai_started_at && Date.now() - Date.parse(s.ai_started_at) > 120_000)
 
@@ -126,6 +134,12 @@ function SubmissionItem({ submission: s, imageUrl, moderation, onChanged }: {
       <span className={s.status === 'approved' ? 'text-sm text-green-300' : s.status === 'rejected' || s.status === 'ai_failed' ? 'text-sm text-red-300' : 'text-sm text-purple-200'}>{STATUS_LABELS[s.status]}</span>
     </div>
     {imageUrl && <img src={imageUrl} alt={`Eingereichtes Kamerafoto aus ${s.city}`} className="max-h-80 w-full rounded-lg object-contain bg-black/30" />}
+    {s.stats_need_review && <p role="status" className="text-sm text-amber-200">Altbestand: Die neuen Attribute sind vorläufig auf 50 gesetzt. Vor der Freigabe bitte anhand der Funddetails neu bewerten.</p>}
+    {s.submitted_name && s.submitted_description && <details className="text-sm">
+      <summary className="cursor-pointer text-purple-200">Unveränderter Spielertext</summary>
+      <p className="mt-2 font-semibold">{s.submitted_name}</p>
+      <p className="whitespace-pre-wrap">{s.submitted_description}</p>
+    </details>}
     <details className="text-sm"><summary className="cursor-pointer text-purple-200">Funddetails und Stat-Vergleich</summary>
       <dl className="mt-3 space-y-2">
         <div><dt className="text-muted-foreground">Fundort / Funddatum / Zustand</dt><dd>{s.location}, {s.city}, {s.country} · {s.found_on} · {s.condition}</dd></div>
@@ -139,6 +153,19 @@ function SubmissionItem({ submission: s, imageUrl, moderation, onChanged }: {
     </details>
     {s.description && <p className="text-sm whitespace-pre-wrap">{s.description}</p>}
     {aiReasoning && <p className="text-sm text-cyan-200"><strong>KI-Balancing:</strong> {aiReasoning}</p>}
+    {textReview && <div className={`rounded-lg border p-3 text-sm ${textReview.needs_review ? 'border-amber-400/50 text-amber-200' : 'border-cyan-400/25 text-cyan-200'}`}>
+      <strong>{textReview.needs_review ? 'KI-Texthinweis · Moderation prüfen' : 'KI-Textprüfung · unauffällig'}</strong>
+      <p className="whitespace-pre-wrap">{String(textReview.reasoning)}</p>
+    </div>}
+    {hasCorrections && <details className="text-sm">
+      <summary className="cursor-pointer text-purple-200">KI-Korrekturvorschlag (nicht automatisch übernommen)</summary>
+      <p className="mt-2 font-semibold">{correctedName}</p>
+      <p className="whitespace-pre-wrap">{correctedDescription}</p>
+      {moderation && s.status === 'pending_review' && correctedName !== null && correctedDescription !== null && <Button variant="outline" disabled={busy} onClick={() => {
+        setName(correctedName)
+        setDescription(correctedDescription)
+      }}>Korrektur in die Moderationsfassung übernehmen</Button>}
+    </details>}
     {s.ai_error && <p role="alert" className="text-sm text-red-300">{s.ai_error}</p>}
     {s.moderation_notes && <p className="text-sm text-amber-200"><strong>Moderation:</strong> {s.moderation_notes}</p>}
     {s.status === 'approved' && <Link to="/collection" className="block text-sm text-green-300 underline">Deine Kopie in der Sammlung ansehen</Link>}
@@ -198,7 +225,7 @@ export function GenerationSettings() {
   }
   return <section className="space-y-4 rounded-xl border border-purple-400/25 p-5">
     <h2 className="font-semibold">KI-Stilvorgabe</h2>
-    <p className="text-sm text-muted-foreground">Hier eine allgemeine Stilbeschreibung und freigegebene, anonymisierte Beispiele hinterlegen – keine privaten WhatsApp-Exporte. Dieser Text wird an OpenAI gesendet. Die Sicherheits- und Balancing-Regeln bleiben verbindlich.</p>
+    <p className="text-sm text-muted-foreground">Bewertungsmaßstab für Spielertexte, kein Auftrag zum Umschreiben. Hier eine allgemeine Stilbeschreibung und freigegebene, anonymisierte Beispiele hinterlegen – keine privaten WhatsApp-Exporte. Dieser Text wird an OpenAI gesendet. Die KI darf nur Rechtschreibung und Grammatik als Korrektur vorschlagen; deutliche Stilabweichungen markiert sie für die Moderation. Die Sicherheits- und Balancing-Regeln bleiben verbindlich.</p>
     {query.isError && <p role="alert">{errorMessage(query.error)}</p>}
     {query.isPending ? <p role="status">Stilvorgabe wird geladen …</p> : query.data && <>
       <label className="block text-sm">Stilbeschreibung<textarea className="mt-2 min-h-52 w-full rounded-lg border border-input bg-background p-3" maxLength={6000} value={guide ?? query.data.style_guide} onChange={(e) => setGuide(e.target.value)} /></label>

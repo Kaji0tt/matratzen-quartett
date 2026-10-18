@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "test:images": "node --test tests/image-crop.test.mjs",
+    "test:cards": "node --test tests/card-attributes.test.mjs supabase/tests/submission_ai.test.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

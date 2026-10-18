@@ -66,6 +66,11 @@ export interface Database {
           stat_alter: number
           stat_flecken: number
           stat_witterung: number
+          stat_ambiente: number
+          stat_komfort: number
+          stat_format: number
+          stat_charakter: number
+          stats_need_review: boolean
           stat_geruch: number
           stat_kontaminierung: number
           notes: string | null

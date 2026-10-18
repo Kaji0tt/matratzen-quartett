@@ -108,7 +108,6 @@ export interface Database {
           price_coins: number
           card_count: number
           weight_common: number
-          weight_uncommon: number
           weight_rare: number
           weight_epic: number
           weight_legendary: number
@@ -227,7 +226,7 @@ export interface Database {
     }
     Functions: Record<string, never>
     Enums: {
-      rarity: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary'
+      rarity: 'common' | 'rare' | 'epic' | 'legendary'
       card_condition: 'mint' | 'excellent' | 'good' | 'fair' | 'poor'
       trade_status: 'pending' | 'accepted' | 'declined' | 'cancelled' | 'expired'
       battle_status: 'pending' | 'active' | 'finished'

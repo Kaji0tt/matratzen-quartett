@@ -20,7 +20,6 @@ export function formatDate(date: string | Date): string {
 export function getRarityColor(rarity: string): string {
   const colors: Record<string, string> = {
     common: 'text-slate-400',
-    uncommon: 'text-green-400',
     rare: 'text-blue-400',
     epic: 'text-purple-400',
     legendary: 'text-amber-400',
@@ -31,7 +30,6 @@ export function getRarityColor(rarity: string): string {
 export function getRarityBgGradient(rarity: string): string {
   const gradients: Record<string, string> = {
     common: 'from-slate-800 to-slate-900',
-    uncommon: 'from-green-900/40 to-slate-900',
     rare: 'from-blue-900/40 to-slate-900',
     epic: 'from-purple-900/40 to-slate-900',
     legendary: 'from-amber-900/40 via-red-900/20 to-slate-900',
@@ -42,7 +40,6 @@ export function getRarityBgGradient(rarity: string): string {
 export function getRarityLabel(rarity: string): string {
   const labels: Record<string, string> = {
     common: 'Gewöhnlich',
-    uncommon: 'Ungewöhnlich',
     rare: 'Selten',
     epic: 'Episch',
     legendary: 'Legendär',

@@ -12,7 +12,6 @@ const badgeVariants = cva(
         destructive: "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
         outline: "text-foreground",
         common: "border-slate-400/30 bg-slate-800 text-slate-300",
-        uncommon: "border-green-500/50 bg-green-900/30 text-green-400",
         rare: "border-blue-500/50 bg-blue-900/30 text-blue-400",
         epic: "border-purple-500/50 bg-purple-900/30 text-purple-400",
         legendary: "border-amber-400/70 bg-amber-900/30 text-amber-400",

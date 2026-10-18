@@ -237,7 +237,7 @@ function ManualCardForm({ entry, onSaved, onClose }: {
           <option value="mint">Wie neu</option><option value="excellent">Sehr gut</option><option value="good">Gebraucht</option><option value="fair">Mitgenommen</option><option value="poor">Bordstein-Endboss</option>
         </select></label>
         <label className="block text-sm">Seltenheit<select className="mt-1 w-full rounded-lg border border-input bg-background p-3" value={rarity} onChange={(event) => setRarity(event.target.value as Rarity)}>
-          <option value="common">Gewöhnlich</option><option value="uncommon">Ungewöhnlich</option><option value="rare">Selten</option><option value="epic">Episch</option><option value="legendary">Legendär</option>
+          <option value="common">Gewöhnlich</option><option value="rare">Selten</option><option value="epic">Episch</option><option value="legendary">Legendär</option>
         </select></label>
       </div>
       <StatInputs value={stats} onChange={setStats} />

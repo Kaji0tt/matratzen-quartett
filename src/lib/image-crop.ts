@@ -4,23 +4,21 @@ export interface CropSelection {
   zoom: number
   horizontal: number
   vertical: number
-  aspect: number
 }
 
 export function getImageCrop(width: number, height: number, selection: CropSelection) {
-  const { zoom, horizontal, vertical, aspect } = selection
-  if (![width, height, zoom, horizontal, vertical, aspect].every(Number.isFinite)
-    || width <= 0 || height <= 0 || aspect <= 0 || zoom < 1 || zoom > 4
+  const { zoom, horizontal, vertical } = selection
+  if (![width, height, zoom, horizontal, vertical].every(Number.isFinite)
+    || width <= 0 || height <= 0 || zoom < 1 || zoom > 4
     || horizontal < 0 || horizontal > 100 || vertical < 0 || vertical > 100) {
     throw new Error('Ungültiger Bildausschnitt.')
   }
-  const cropWidth = Math.min(width, height * aspect) / zoom
-  const cropHeight = cropWidth / aspect
+  const size = Math.min(width, height) / zoom
   return {
-    x: (width - cropWidth) * horizontal / 100,
-    y: Math.max(0, height - cropHeight) * vertical / 100,
-    width: cropWidth,
-    height: cropHeight,
+    x: (width - size) * horizontal / 100,
+    y: (height - size) * vertical / 100,
+    width: size,
+    height: size,
   }
 }
 

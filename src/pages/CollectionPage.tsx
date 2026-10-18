@@ -31,7 +31,7 @@ const DEMO_CARDS: Card[] = [
   },
   {
     id: '2', name: 'Hamburger Hafenmatratze', description: 'Direkt am Hafen mit Seeluft imprägniert.',
-    rarity: 'uncommon', image_url: '', location: 'Hafenstraße', city: 'Hamburg', country: 'DE',
+    rarity: 'common', image_url: '', location: 'Hafenstraße', city: 'Hamburg', country: 'DE',
     condition: 'fair', stats: { witterung: 90, ambiente: 75, komfort: 20, format: 50, charakter: 45 },
     photographer_id: '2', photographer_username: 'hamburgfoto', created_at: '2024-02-01T14:00:00Z',
     is_approved: true, report_count: 0, attributes: [],
@@ -59,7 +59,7 @@ const DEMO_CARDS: Card[] = [
   },
   {
     id: '6', name: 'Stuttgarter Weinberg-Lager', description: 'Zwischen Reben gefunden.',
-    rarity: 'uncommon', image_url: '', location: 'Rotenberg', city: 'Stuttgart', country: 'DE',
+    rarity: 'common', image_url: '', location: 'Rotenberg', city: 'Stuttgart', country: 'DE',
     condition: 'good', stats: { witterung: 50, ambiente: 80, komfort: 55, format: 35, charakter: 65 },
     photographer_id: '6', photographer_username: 'stuttgartpix', created_at: '2024-06-12T09:00:00Z',
     is_approved: true, report_count: 0, attributes: [],
@@ -67,7 +67,7 @@ const DEMO_CARDS: Card[] = [
 ]
 
 const rarityOrder: Record<Rarity, number> = {
-  legendary: 5, epic: 4, rare: 3, uncommon: 2, common: 1,
+  legendary: 4, epic: 3, rare: 2, common: 1,
 }
 
 const RARITY_CONFIG: { value: FilterRarity; label: string; color: string }[] = [
@@ -75,7 +75,6 @@ const RARITY_CONFIG: { value: FilterRarity; label: string; color: string }[] = [
   { value: 'legendary', label: 'Legendär',  color: 'text-amber-400' },
   { value: 'epic',      label: 'Episch',    color: 'text-purple-400' },
   { value: 'rare',      label: 'Selten',    color: 'text-blue-400' },
-  { value: 'uncommon',  label: 'Ungewöhnl.', color: 'text-green-400' },
   { value: 'common',    label: 'Gewöhnl.',  color: 'text-slate-400' },
 ]
 

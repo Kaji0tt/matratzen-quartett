@@ -22,7 +22,6 @@ const sizeClasses = {
 
 const rarityClass: Record<Rarity, string> = {
   common: 'card-common',
-  uncommon: 'card-uncommon',
   rare: 'card-rare',
   epic: 'card-epic',
   legendary: 'card-legendary',
@@ -30,7 +29,6 @@ const rarityClass: Record<Rarity, string> = {
 
 const rarityGlow: Record<Rarity, string> = {
   common: '',
-  uncommon: 'shadow-green-500/20',
   rare: 'shadow-blue-500/30',
   epic: 'shadow-purple-500/40',
   legendary: 'shadow-amber-500/50',

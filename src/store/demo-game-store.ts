@@ -71,15 +71,13 @@ interface DemoGameState {
 
 const rarityRank: Record<Rarity, number> = {
   common: 0,
-  uncommon: 1,
-  rare: 2,
-  epic: 3,
-  legendary: 4,
+  rare: 1,
+  epic: 2,
+  legendary: 3,
 }
 
 const rarityNames: Record<Rarity, string[]> = {
-  common: ['Bürgersteig-Bonanza', 'Die letzte Ölung', 'Bettina vom Bau', 'Mief im Morgenrot'],
-  uncommon: ['Der Hinterhof-Held', 'Federkern-Fossil', 'Schaumstoff-Sensation'],
+  common: ['Bürgersteig-Bonanza', 'Die letzte Ölung', 'Bettina vom Bau', 'Mief im Morgenrot', 'Der Hinterhof-Held', 'Federkern-Fossil', 'Schaumstoff-Sensation'],
   rare: ['Königin der Kante', 'Der Bordstein-Baron', 'Matratze mit Migrationshintergrund'],
   epic: ['Graf von Gammel', 'Die Samtige Seuche', 'Schlafstätte des Schicksals'],
   legendary: ['Der Heilige Lattenrost', 'Uralte Ur-Matratze', 'Miefkönig der Nacht'],
@@ -153,7 +151,7 @@ function starterCards(): Card[] {
     { witterung: 35, ambiente: 95, komfort: 40, format: 50, charakter: 65 },
     { witterung: 45, ambiente: 35, komfort: 65, format: 95, charakter: 40 },
   ]
-  const rarities: Rarity[] = ['common', 'common', 'uncommon', 'common', 'uncommon']
+  const rarities: Rarity[] = ['common', 'common', 'common', 'common', 'common']
 
   return names.map((name, index) => ({
     ...makeCard(rarities[index]),
@@ -379,7 +377,7 @@ export const useDemoGameStore = create<DemoGameState>()(
     }),
     {
       name: 'matratzen-quartett-demo-game-v1',
-      version: 1,
+      version: 2,
       migrate: migrateDemoCards,
       onRehydrateStorage: () => (_state, error) => {
         if (error) {

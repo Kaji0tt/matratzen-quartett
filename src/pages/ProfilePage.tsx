@@ -16,9 +16,9 @@ const DEMO_ACHIEVEMENTS = [
   { key: 'first_battle', name: 'Erster Kampf', icon: '⚔️', unlocked: true, rarity: 'common' },
   { key: 'photographer', name: 'Fotograf', icon: '📸', unlocked: true, rarity: 'common' },
   { key: 'first_trade', name: 'Erster Handel', icon: '🤝', unlocked: false, rarity: 'common' },
-  { key: 'collector_50', name: 'Großer Sammler', icon: '🗃️', unlocked: false, rarity: 'uncommon' },
+  { key: 'collector_50', name: 'Großer Sammler', icon: '🗃️', unlocked: false, rarity: 'common' },
   { key: 'legendary_card', name: 'Legendär', icon: '⭐', unlocked: false, rarity: 'rare' },
-  { key: 'elo_1500', name: 'Profi', icon: '🔥', unlocked: false, rarity: 'uncommon' },
+  { key: 'elo_1500', name: 'Profi', icon: '🔥', unlocked: false, rarity: 'common' },
 ]
 
 export function ProfilePage() {

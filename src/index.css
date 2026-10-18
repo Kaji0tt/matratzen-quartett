@@ -130,11 +130,6 @@
   @apply border border-slate-400/30;
 }
 
-.card-uncommon {
-  @apply border border-green-500/50;
-  box-shadow: 0 0 8px rgba(34, 197, 94, 0.3);
-}
-
 .card-rare {
   @apply border border-blue-500/60;
   box-shadow: 0 0 12px rgba(59, 130, 246, 0.4), 0 0 30px rgba(59, 130, 246, 0.2);
@@ -1116,7 +1111,6 @@ main:has(.booster-viewport) { padding-bottom: env(safe-area-inset-bottom, 0px); 
 .booster-text-button:hover { background: #af7aff19; }
 .booster-text-button:disabled { opacity: .6; }
 .street-card { --rarity-color: #adbbce; --rarity-deep: #3c4964; display: flex; flex-direction: column; width: 100%; height: 100%; overflow: hidden; border: 1px solid var(--rarity-color); border-radius: 12px; padding: 4px; background: linear-gradient(135deg, var(--rarity-color), var(--rarity-deep) 40%, #16132a 65%, var(--rarity-color)); box-shadow: 0 0 16px color-mix(in srgb, var(--rarity-color) 18%, transparent), inset 0 0 5px #ffffff55; }
-.street-card--uncommon { --rarity-color: #76e7b0; --rarity-deep: #1b6354; }
 .street-card--rare { --rarity-color: #6dccff; --rarity-deep: #235ba6; }
 .street-card--epic { --rarity-color: #cf8aff; --rarity-deep: #7634a5; }
 .street-card--legendary { --rarity-color: #ffcf70; --rarity-deep: #a15a20; box-shadow: 0 0 25px #e9a83c40, inset 0 0 8px #fff1bd80; }

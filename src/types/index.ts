@@ -1,4 +1,4 @@
-export type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary'
+export type Rarity = 'common' | 'rare' | 'epic' | 'legendary'
 
 export type CardCondition = 'mint' | 'excellent' | 'good' | 'fair' | 'poor'
 
@@ -85,7 +85,6 @@ export interface BoosterPack {
 
 export interface RarityWeights {
   common: number
-  uncommon: number
   rare: number
   epic: number
   legendary: number

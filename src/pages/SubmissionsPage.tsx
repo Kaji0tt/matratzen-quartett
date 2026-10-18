@@ -182,7 +182,7 @@ function SubmissionItem({ submission: s, imageUrl, moderation, onChanged }: {
         <StatInputs value={stats} onChange={setStats} />
         <p className="text-xs text-muted-foreground">Verbindliches Budget: maximal 300 Punkte, höchstens ein Wert über 85. Aktuell: {Object.values(stats).reduce((sum, v) => sum + v, 0)}.</p>
         <label className="block text-sm">Seltenheit<select className="ml-3 rounded-lg bg-slate-900 p-3" value={rarity} onChange={(e) => setRarity(e.target.value as Rarity)}>
-          <option value="common">Gewöhnlich</option><option value="uncommon">Ungewöhnlich</option><option value="rare">Selten</option><option value="epic">Episch</option><option value="legendary">Legendär</option>
+          <option value="common">Gewöhnlich</option><option value="rare">Selten</option><option value="epic">Episch</option><option value="legendary">Legendär</option>
         </select></label>
       </>}
       <label className="block text-sm">Rückmeldung an den Spieler (bei Ablehnung erforderlich)

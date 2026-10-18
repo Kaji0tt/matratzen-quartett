@@ -15,7 +15,6 @@ export function ImageCropper({ source, outputType, onApply, onCancel }: {
   const drag = useRef<{ id: number; x: number; y: number; horizontal: number; vertical: number } | null>(null)
   const [url, setUrl] = useState('')
   const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null)
-  const [format, setFormat] = useState('original')
   const [zoom, setZoom] = useState(1)
   const [horizontal, setHorizontal] = useState(50)
   const [vertical, setVertical] = useState(50)
@@ -32,8 +31,7 @@ export function ImageCropper({ source, outputType, onApply, onCancel }: {
     }
   }, [source])
 
-  const aspect = format === 'original' ? (dimensions ? dimensions.width / dimensions.height : 1) : Number(format)
-  const selection = { zoom, horizontal, vertical, aspect }
+  const selection = { zoom, horizontal, vertical }
   const crop = dimensions ? getImageCrop(dimensions.width, dimensions.height, selection) : null
 
   async function apply() {
@@ -54,9 +52,9 @@ export function ImageCropper({ source, outputType, onApply, onCancel }: {
 
   return <section aria-label="Bildausschnitt wählen" className="space-y-4 rounded-xl border border-purple-400/40 bg-slate-900 p-4">
     <h3 className="font-semibold">Bildausschnitt wählen</h3>
-    <p className="text-sm text-muted-foreground">Das sichtbare Bild wird gespeichert. Zum Verschieben ziehen oder die Regler nutzen. Mit „Original“ und Zoom 1 bleibt das ganze Bild erhalten.</p>
+    <p className="text-sm text-muted-foreground">Der Ausschnitt ist immer quadratisch (1:1). Das sichtbare Bild wird gespeichert. Zum Verschieben ziehen oder die Regler nutzen.</p>
     {url && <div className="relative mx-auto w-full max-w-sm overflow-hidden rounded-lg bg-black touch-none"
-      style={{ aspectRatio: aspect, width: `min(100%, ${45 * aspect}dvh)` }}
+      style={{ aspectRatio: 1, width: 'min(100%, 45dvh)' }}
       onPointerDown={(event) => {
         if (busy || !dimensions || event.button !== 0) return
         event.currentTarget.setPointerCapture(event.pointerId)
@@ -89,16 +87,6 @@ export function ImageCropper({ source, outputType, onApply, onCancel }: {
       </div>
     </div>}
     <fieldset disabled={busy || !dimensions} className="space-y-3">
-      <label className="block text-sm">Ausschnittformat
-        <select className="mt-1 w-full rounded-lg border border-input bg-background p-2" value={format} onChange={(event) => {
-          setFormat(event.target.value)
-          setHorizontal(50)
-          setVertical(50)
-        }}>
-          <option value="original">Original</option><option value={4 / 3}>Querformat (4:3)</option>
-          <option value="1">Quadratisch (1:1)</option><option value={3 / 4}>Hochformat (3:4)</option>
-        </select>
-      </label>
       <label className="block text-sm">Zoom: {zoom.toFixed(2)}×
         <input className="block w-full accent-purple-500" type="range" min="1" max="4" step="0.01" value={zoom} onChange={(event) => setZoom(Number(event.target.value))} />
       </label>
@@ -110,7 +98,7 @@ export function ImageCropper({ source, outputType, onApply, onCancel }: {
         <input className="block w-full accent-purple-500" type="range" min="0" max="100" step="0.1" value={vertical}
           disabled={!crop || !dimensions || dimensions.height - crop.height < 0.001} onChange={(event) => setVertical(Number(event.target.value))} />
       </label>
-      <Button type="button" variant="outline" onClick={() => { setFormat('original'); setZoom(1); setHorizontal(50); setVertical(50) }}>Ausschnitt zurücksetzen</Button>
+      <Button type="button" variant="outline" onClick={() => { setZoom(1); setHorizontal(50); setVertical(50) }}>Ausschnitt zurücksetzen</Button>
     </fieldset>
     {error && <p role="alert" className="text-sm text-red-300">{error}</p>}
     <div className="flex flex-wrap gap-3">

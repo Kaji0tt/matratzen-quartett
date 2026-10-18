@@ -16,28 +16,28 @@ const BOOSTERS: BoosterPack[] = [
     id: '1', name: 'Standard Pack',
     description: 'Dein Einstieg in den Kiez. Fünf Fundstücke, unendlich viel Geschichte.',
     image_url: '', price_coins: 100, card_count: 5,
-    rarity_weights: { common: 60, uncommon: 25, rare: 10, epic: 4, legendary: 1 },
+    rarity_weights: { common: 85, rare: 10, epic: 4, legendary: 1 },
     is_available: true, limited_edition: false,
   },
   {
     id: '2', name: 'Premium Pack',
     description: 'Mehr Neon. Mehr Seltenes. Erhöhte Chancen auf die Schätze der Straße.',
     image_url: '', price_coins: 250, card_count: 5,
-    rarity_weights: { common: 40, uncommon: 30, rare: 20, epic: 8, legendary: 2 },
+    rarity_weights: { common: 70, rare: 20, epic: 8, legendary: 2 },
     is_available: true, limited_edition: false,
   },
   {
     id: '3', name: 'Mega Pack',
     description: 'Der große Straßenfund. Zehn Karten, davon mindestens eine selten oder besser.',
     image_url: '', price_coins: 400, card_count: 10,
-    rarity_weights: { common: 35, uncommon: 30, rare: 25, epic: 8, legendary: 2 },
+    rarity_weights: { common: 65, rare: 25, epic: 8, legendary: 2 },
     is_available: true, limited_edition: false,
   },
   {
     id: '4', name: 'Legendary Pack',
     description: 'Für die Legenden des Kiezes. Mindestens eine epische oder legendäre Karte.',
     image_url: '', price_coins: 1000, card_count: 5,
-    rarity_weights: { common: 0, uncommon: 20, rare: 40, epic: 30, legendary: 10 },
+    rarity_weights: { common: 20, rare: 40, epic: 30, legendary: 10 },
     is_available: true, limited_edition: true,
   },
 ]
@@ -304,7 +304,7 @@ export function BoosterPage() {
                       <span className="booster-foil__seam booster-foil__seam--bottom" />
                     </span>
                   </button>
-                  <span id={`booster-details-${pack.id}`} className="sr-only">{pack.description} Drop-Gewichte: Common {pack.rarity_weights.common}, Uncommon {pack.rarity_weights.uncommon}, Rare {pack.rarity_weights.rare}, Epic {pack.rarity_weights.epic}, Legendary {pack.rarity_weights.legendary} Prozent. Garantiekarten werden innerhalb der garantierten Seltenheiten nach denselben Gewichten gezogen.</span>
+                  <span id={`booster-details-${pack.id}`} className="sr-only">{pack.description} Drop-Gewichte: Common {pack.rarity_weights.common}, Rare {pack.rarity_weights.rare}, Epic {pack.rarity_weights.epic}, Legendary {pack.rarity_weights.legendary} Prozent. Garantiekarten werden innerhalb der garantierten Seltenheiten nach denselben Gewichten gezogen.</span>
                 </div>
               ))}
             </div>

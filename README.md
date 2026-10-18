@@ -21,7 +21,7 @@ Ein Community-basiertes Multiplayer-Sammelkarten- und Quartettspiel. Fotografier
 
 ## ✨ Features
 
-- **🃏 Karten-Sammlung** – Über 5 Seltenheitsstufen (Common bis Legendary) mit einzigartigen VFX
+- **🃏 Karten-Sammlung** – Vier Seltenheitsstufen (Gewöhnlich, Selten, Episch, Legendär) mit einzigartigen VFX
 - **📦 Booster-Opening** – Neon-Folienpacks mit Glitch-Übergang und einzeln zerspringenden Kartenhüllen
 - **🤝 Kartenhandel** – Marktplatz + direktes Tauschsystem zwischen Spielern
 - **🏆 Elo-Rangliste** – Verschiedene Ranglisten (Elo, Sammlung, Siege)
@@ -180,11 +180,12 @@ Die SQL-Migrationen stehen in `supabase/migrations/` in numerischer Reihenfolge.
 # supabase/migrations/20261017212221_manual_card_editor.sql
 # supabase/migrations/20261017212724_manual_card_optional_owner.sql
 # supabase/migrations/20261018100611_diverse_card_attributes.sql
+# supabase/migrations/20261018110014_remove_uncommon_rarity.sql
 ```
 
 ### Matratzen einreichen, KI-Prüfung und Freigabe
 
-`/submit` verlangt eine Anmeldung und führt durch **Live-Kamera mit Bildausschnitt → Stat-Vorschläge → Funddetails**. Es gibt weder Galerie-/Dateiupload noch Demo-Einreichungen. Die Kamera benötigt HTTPS (oder localhost) und eine Kameraberechtigung. Nach der Aufnahme lässt sich der Ausschnitt per Ziehen oder Regler verschieben und zoomen; wählbar sind Originalformat, 4:3, 1:1 und 3:4. Erst nach **Ausschnitt übernehmen** ist der nächste Schritt möglich. Der bestätigte Ausschnitt wird als JPEG mit maximal 1600 Pixel Kantenlänge und 5 MB gespeichert; Canvas entfernt dabei ursprüngliche EXIF-Metadaten. Vor dem Upload lässt sich aus derselben Originalaufnahme erneut zuschneiden oder neu fotografieren; nach erfolgreichem Upload bleiben Bildänderungen für diesen Einreichungsversuch gesperrt. Der Aufnahmezeitpunkt bleibt beim Zuschneiden erhalten. Ohne Kamera bleibt die Einreichung gesperrt. Eine Web-App kann manipulierte API-Clients nicht beweissicher als echte Kameraaufnahmen authentifizieren.
+`/submit` verlangt eine Anmeldung und führt durch **Live-Kamera mit Bildausschnitt → Stat-Vorschläge → Funddetails**. Es gibt weder Galerie-/Dateiupload noch Demo-Einreichungen. Die Kamera benötigt HTTPS (oder localhost) und eine Kameraberechtigung. Nach der Aufnahme lässt sich der Ausschnitt per Ziehen oder Regler verschieben und zoomen; er ist immer **quadratisch (1:1)**. Andere Seitenverhältnisse sind nicht wählbar. Auch das Zurücksetzen behält das quadratische Format bei. Erst nach **Ausschnitt übernehmen** ist der nächste Schritt möglich. Der bestätigte Ausschnitt wird als quadratisches JPEG mit maximal 1600 Pixel Kantenlänge und 5 MB gespeichert; Canvas entfernt dabei ursprüngliche EXIF-Metadaten. Vor dem Upload lässt sich aus derselben Originalaufnahme erneut zuschneiden oder neu fotografieren; nach erfolgreichem Upload bleiben Bildänderungen für diesen Einreichungsversuch gesperrt. Der Aufnahmezeitpunkt bleibt beim Zuschneiden erhalten. Ohne Kamera bleibt die Einreichung gesperrt. Eine Web-App kann manipulierte API-Clients nicht beweissicher als echte Kameraaufnahmen authentifizieren.
 
 Funddetails fragen einen **selbst geschriebenen Kartennamen (2–80 Zeichen) und Kartentext (10–1000 Zeichen)** sowie Stadt, Viertel/Fundort, Land, Funddatum, Zustand und Stichpunkte zu Auffälligkeiten, Umgebung und optional zur Fundgeschichte ab. Die eigenen Texte sind Pflicht und werden getrennt von der Moderationsfassung aufbewahrt. Keine Personen, Kennzeichen, privaten Adressen oder vertraulichen Inhalte aufnehmen. Vor dem Absenden ist die Zustimmung zur Veröffentlichung und KI-Verarbeitung einschließlich Kartenname und Beschreibung erforderlich.
 
@@ -264,7 +265,7 @@ Admins und Moderatoren sehen im Profilmenü unterhalb eines Trennstrichs den Abs
 Der Editor ermöglicht:
 
 - PNG- und JPG/JPEG-Dateien bis **5 MB** auszuwählen; die Oberfläche prüft Dateisignatur, MIME-Typ und Dekodierbarkeit und verlangt einen bestätigten Bildausschnitt;
-- Ausschnitte per Ziehen oder per tastaturbedienbaren Reglern zu verschieben und zu zoomen, im Originalformat, in 4:3, 1:1 oder 3:4; auch bestehende Kartenbilder lassen sich neu zuschneiden;
+- ausschließlich quadratische Ausschnitte (1:1) per Ziehen oder per tastaturbedienbaren Reglern zu verschieben und zu zoomen; Vorschau und PNG-Export bleiben auch nach dem Zurücksetzen quadratisch, auch bestehende Kartenbilder lassen sich neu zuschneiden;
 - Name, Beschreibung, Fundort, Stadt, Land, Zustand, Seltenheit, alle fünf Stats und optionale Notizen manuell zu setzen;
 - einen registrierten, nicht gesperrten Spieler nach Benutzername zu suchen und optional als Besitzer auszuwählen;
 - zuvor im Editor erstellte Karten paginiert wiederzufinden und zu bearbeiten.
@@ -366,10 +367,22 @@ Kernentitäten:
 
 ## 🎨 Seltenheits-VFX
 
+Es gibt ausschließlich **Gewöhnlich, Selten, Episch und Legendär**. Die frühere Stufe „Ungewöhnlich“ wird in Karten, Einreichungen, Erfolgen und lokalen Demo-Spielständen mit „Gewöhnlich“ zusammengeführt. Karten-IDs, Besitzkopien, Werte und Fortschritt bleiben erhalten. Die Migration ersetzt auch den Datenbank-Enum und entfernt das alte Booster-Gewicht.
+
+Booster-Gewichte werden zu „Gewöhnlich“ addiert; Chancen auf die drei höheren Stufen, Preise, Kartenzahlen und Garantien bleiben unverändert:
+
+| Pack | Gewöhnlich | Selten | Episch | Legendär |
+|---|---:|---:|---:|---:|
+| Standard | 85 % | 10 % | 4 % | 1 % |
+| Premium | 70 % | 20 % | 8 % | 2 % |
+| Mega | 65 % | 25 % | 8 % | 2 % |
+| Legendary | 20 % | 40 % | 30 % | 10 % |
+
+Die erste Karte im Mega Pack ist weiterhin mindestens selten, im Legendary Pack mindestens episch; die Ziehung erfolgt innerhalb der zulässigen Stufen proportional zu deren Gewichten. Die Datenbankprüfung unter [supabase/tests/rarity.sql](./supabase/tests/rarity.sql) prüft die vier Stufen, Booster-Garantien und idempotente Vergabe mit vollständigem Rollback der Testdaten.
+
 | Seltenheit | Farbe | Effekt |
 |---|---|---|
 | Gewöhnlich | Grau | Dezenter Border |
-| Ungewöhnlich | Grün | Grüner Glow |
 | Selten | Blau | Blauer Glow + Shimmer |
 | Episch | Lila | Lila Glow + Gradient |
 | Legendär | Gold | Pulsierender Glow + Partikel |

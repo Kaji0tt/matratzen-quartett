@@ -115,3 +115,21 @@ test('demo migration keeps new stats and rejects invalid persisted data explicit
     assert.throws(() => migrateDemoCards(value), /ungültig/)
   }
 })
+
+test('demo migration merges uncommon into common without changing cards or progress', () => {
+  const legacyCard = { id: 'old', rarity: 'uncommon', stats: DEFAULT_STATS, description: 'Mein Text', attributes: [] }
+  const state = { coins: 777, wins: 4, cards: [legacyCard], boosterRequests: { purchase: ['old'] } }
+  const migrated = migrateDemoCards(state)
+  assert.deepEqual(migrated, { ...state, cards: [{ ...legacyCard, rarity: 'common' }] })
+  assert.equal(state.cards[0].rarity, 'uncommon')
+  assert.deepEqual(migrateDemoCards(migrated), migrated)
+})
+
+test('demo migration can upgrade both legacy attributes and legacy rarity at once', () => {
+  const migrated = migrateDemoCards({
+    cards: [{ id: 'old', rarity: 'uncommon', stats: { alter: 90, flecken: 80, witterung: 75, geruch: 70, kontaminierung: 60 } }],
+  })
+  assert.equal(migrated.cards[0].rarity, 'common')
+  assert.deepEqual(migrated.cards[0].stats, { witterung: 75, ambiente: 50, komfort: 50, format: 50, charakter: 50 })
+  assert.equal(migrated.cards[0].attributes[0].key, 'Werteprüfung')
+})

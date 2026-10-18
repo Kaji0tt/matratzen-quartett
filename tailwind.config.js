@@ -50,7 +50,6 @@ export default {
         },
         rarity: {
           common: "#94a3b8",
-          uncommon: "#22c55e",
           rare: "#3b82f6",
           epic: "#a855f7",
           legendary: "#f59e0b",

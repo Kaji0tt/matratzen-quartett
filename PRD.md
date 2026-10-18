@@ -61,7 +61,7 @@
 | `push_subscriptions` | Web Push API Endpunkte |
 
 ### Enums
-- `rarity`: common, uncommon, rare, epic, legendary
+- `rarity`: common, rare, epic, legendary
 - `card_condition`: mint, excellent, good, fair, poor
 - `trade_status`: pending, accepted, declined, cancelled, expired
 - `battle_status`: pending, active, finished
@@ -229,8 +229,7 @@ App
 ### Seltenheitsgewichtung (Standard Pack)
 | Seltenheit | Wahrscheinlichkeit | Elo-Wert |
 |---|---|---|
-| Gewöhnlich | 60% | 1× |
-| Ungewöhnlich | 25% | 3× |
+| Gewöhnlich | 85% | 1× |
 | Selten | 10% | 8× |
 | Episch | 4% | 20× |
 | Legendär | 1% | 50× |
@@ -512,7 +511,6 @@ R_A_new = R_A + K × (S_A - E_A)
 | Seltenheit | Effekt |
 |---|---|
 | Gewöhnlich | Einfacher border, kein Glow |
-| Ungewöhnlich | Grüner Glow (box-shadow) |
 | Selten | Blauer Glow + leichter Shimmer |
 | Episch | Lila Glow + Gradient-Overlay |
 | Legendär | Goldener pulsierender Glow + Partikel-Animation |

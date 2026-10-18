@@ -340,7 +340,6 @@ export type Database = {
           weight_epic: number
           weight_legendary: number
           weight_rare: number
-          weight_uncommon: number
         }
         Insert: {
           available_until?: string | null
@@ -357,7 +356,6 @@ export type Database = {
           weight_epic?: number
           weight_legendary?: number
           weight_rare?: number
-          weight_uncommon?: number
         }
         Update: {
           available_until?: string | null
@@ -374,7 +372,6 @@ export type Database = {
           weight_epic?: number
           weight_legendary?: number
           weight_rare?: number
-          weight_uncommon?: number
         }
         Relationships: []
       }
@@ -1309,7 +1306,7 @@ export type Database = {
         | "battle_challenge"
         | "battle_result"
         | "system"
-      rarity: "common" | "uncommon" | "rare" | "epic" | "legendary"
+      rarity: "common" | "rare" | "epic" | "legendary"
       report_reason:
         | "inappropriate_content"
         | "spam"
@@ -1477,7 +1474,7 @@ export const Constants = {
         "battle_result",
         "system",
       ],
-      rarity: ["common", "uncommon", "rare", "epic", "legendary"],
+      rarity: ["common", "rare", "epic", "legendary"],
       report_reason: [
         "inappropriate_content",
         "spam",

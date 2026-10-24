@@ -179,7 +179,7 @@ export function CardDetailModal({ slides, onClose }: {
             </button>
           )}
           <div className="collection-carousel__position" aria-live="polite" aria-atomic="true">
-            {activeSlide.copyNumber && <span>Exemplar {activeSlide.copyNumber} von {activeSlide.copyTotal}</span>}
+            {activeSlide.copyNumber && <span>Exemplar <strong>{activeSlide.copyNumber} von {activeSlide.copyTotal}</strong></span>}
             <span className="collection-carousel__score">Gesamtpunkte <strong>{totalPoints}</strong></span>
           </div>
         </div>

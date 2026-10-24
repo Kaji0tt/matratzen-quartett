@@ -1,5 +1,5 @@
 import { Crown, Flag, MapPin, SignalZero, SignalLow, SignalMedium, SignalHigh, Signal, LockKeyhole, PenTool } from 'lucide-react'
-import { useId, useState } from 'react'
+import { useEffect, useId, useRef, useState, type CSSProperties } from 'react'
 import { getRarityLabel } from '@/lib/utils'
 import { applyCardStatModifiers, COLLECTIBLE_CONDITIONS, EDITOR_CONDITION, getModifierTotal, type CollectibleCondition } from '@/lib/card-condition'
 import type { Card, CardStats } from '@/types'
@@ -19,6 +19,47 @@ const conditionIcons = {
 
 function signedValue(value: number): string {
   return value > 0 ? `+${value}` : `${value}`
+}
+
+function DetailedCardName({ name }: { name: string }) {
+  const viewportRef = useRef<HTMLElement>(null)
+  const textRef = useRef<HTMLSpanElement>(null)
+  const [overflow, setOverflow] = useState(0)
+
+  useEffect(() => {
+    const viewport = viewportRef.current
+    const text = textRef.current
+    if (!viewport || !text || !viewport.closest('.collection-detail-card')) return
+    const measure = () => {
+      text.style.fontSize = ''
+      const baseSize = Number.parseFloat(getComputedStyle(viewport).fontSize)
+      const range = document.createRange()
+      range.selectNodeContents(text)
+      const naturalWidth = range.getBoundingClientRect().width
+      const fittedSize = naturalWidth > 0
+        ? Math.max(Math.min(16, baseSize), Math.min(baseSize, baseSize * (viewport.clientWidth - .5) / naturalWidth))
+        : baseSize
+      text.style.fontSize = `${fittedSize}px`
+      setOverflow(Math.max(0, Math.ceil(range.getBoundingClientRect().width - viewport.clientWidth)))
+    }
+    const observer = new ResizeObserver(measure)
+    observer.observe(viewport)
+    observer.observe(text)
+    measure()
+    return () => observer.disconnect()
+  }, [name])
+
+  const style: CSSProperties & { '--title-offset': string; '--title-duration': string } = {
+    '--title-offset': `-${overflow}px`,
+    '--title-duration': `${Math.max(8, overflow / 24 * 2 + 4)}s`,
+  }
+
+  return (
+    <strong ref={viewportRef} title={name} style={style}
+      className={`street-card__name street-card__name--single-line${overflow > 0 ? ' street-card__name--overflow' : ''}`}>
+      <span key={name} ref={textRef} className="street-card__name-text">{name}</span>
+    </strong>
+  )
 }
 
 function CardStatDetail({ card, stat, label, value, open, onOpenChange }: {
@@ -114,6 +155,7 @@ export function StreetCard({ card, detailed = false, owned = true, editable }: {
       className={`street-card__editable street-card__name${editable.field === 'name' ? ' is-editing' : ''}`}
       aria-label="Kartenname bearbeiten" aria-pressed={editable.field === 'name'}
       onClick={() => editable.onEdit('name')}>{card.name}</button>
+      : detailed ? <DetailedCardName name={card.name} />
       : <strong className="street-card__name">{card.name}</strong>
   return (
     <span className={`street-card street-card--${card.rarity}${detailed ? ' street-card--detailed' : ''}${!owned ? ' street-card--missing' : ''}${copyKind ? ` street-card--${copyKind}` : ''}`}>

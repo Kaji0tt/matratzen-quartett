@@ -14,14 +14,14 @@ import type { Card as CardType } from '@/types'
 const DEMO_TRADE_CARDS: CardType[] = [
   {
     id: '1', name: 'Berliner Bürgersteig-Bett', description: '', rarity: 'common',
-    image_url: '', location: '', city: 'Berlin', country: 'DE', condition: 'good',
+    image_url: '', location: '', city: 'Berlin', country: 'DE',
     stats: { witterung: 60, flecken: 70, ambiente: 35, komfort: 65, charakter: 30 },
     photographer_id: '1', photographer_username: 'berliner', created_at: '',
     is_approved: true, report_count: 0, attributes: [],
   },
   {
     id: '2', name: 'Hamburger Hafenmatratze', description: '', rarity: 'rare',
-    image_url: '', location: '', city: 'Hamburg', country: 'DE', condition: 'fair',
+    image_url: '', location: '', city: 'Hamburg', country: 'DE',
     stats: { witterung: 90, flecken: 75, ambiente: 65, komfort: 20, charakter: 45 },
     photographer_id: '2', photographer_username: 'hamburger', created_at: '',
     is_approved: true, report_count: 0, attributes: [],

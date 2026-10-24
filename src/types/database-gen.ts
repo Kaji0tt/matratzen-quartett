@@ -406,7 +406,6 @@ export type Database = {
           captured_at: string
           card_id: string | null
           city: string
-          condition: Database["public"]["Enums"]["card_condition"]
           country: string
           created_at: string
           description: string | null
@@ -440,7 +439,6 @@ export type Database = {
           captured_at: string
           card_id?: string | null
           city: string
-          condition: Database["public"]["Enums"]["card_condition"]
           country?: string
           created_at?: string
           description?: string | null
@@ -474,7 +472,6 @@ export type Database = {
           captured_at?: string
           card_id?: string | null
           city?: string
-          condition?: Database["public"]["Enums"]["card_condition"]
           country?: string
           created_at?: string
           description?: string | null
@@ -542,7 +539,6 @@ export type Database = {
           stat_charakter: number
           stats_need_review: boolean
           city: string
-          condition: Database["public"]["Enums"]["card_condition"]
           country: string
           created_at: string
           description: string
@@ -554,6 +550,7 @@ export type Database = {
           name: string
           notes: string | null
           photographer_id: string
+          photographer_username: string | null
           rarity: Database["public"]["Enums"]["rarity"]
           report_count: number
           stat_alter: number
@@ -571,7 +568,6 @@ export type Database = {
           stat_charakter?: number
           stats_need_review?: boolean
           city?: string
-          condition?: Database["public"]["Enums"]["card_condition"]
           country?: string
           created_at?: string
           description?: string
@@ -583,6 +579,7 @@ export type Database = {
           name: string
           notes?: string | null
           photographer_id: string
+          photographer_username?: string | null
           rarity?: Database["public"]["Enums"]["rarity"]
           report_count?: number
           stat_alter?: number
@@ -600,7 +597,6 @@ export type Database = {
           stat_charakter?: number
           stats_need_review?: boolean
           city?: string
-          condition?: Database["public"]["Enums"]["card_condition"]
           country?: string
           created_at?: string
           description?: string
@@ -612,6 +608,7 @@ export type Database = {
           name?: string
           notes?: string | null
           photographer_id?: string
+          photographer_username?: string | null
           rarity?: Database["public"]["Enums"]["rarity"]
           report_count?: number
           stat_alter?: number
@@ -1129,6 +1126,8 @@ export type Database = {
       }
       user_cards: {
         Row: {
+          collectible_condition: import('../lib/card-condition.ts').CollectibleCondition | null
+          stat_modifiers: Json
           acquired_at: string
           acquisition_type: Database["public"]["Enums"]["acquisition_type"]
           card_id: string
@@ -1140,6 +1139,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          collectible_condition?: import('../lib/card-condition.ts').CollectibleCondition | null
+          stat_modifiers?: Json
           acquired_at?: string
           acquisition_type?: Database["public"]["Enums"]["acquisition_type"]
           card_id: string
@@ -1151,6 +1152,8 @@ export type Database = {
           user_id: string
         }
         Update: {
+          collectible_condition?: import('../lib/card-condition.ts').CollectibleCondition | null
+          stat_modifiers?: Json
           acquired_at?: string
           acquisition_type?: Database["public"]["Enums"]["acquisition_type"]
           card_id?: string
@@ -1225,7 +1228,6 @@ export type Database = {
           captured_at: string
           card_id: string | null
           city: string
-          condition: Database["public"]["Enums"]["card_condition"]
           country: string
           created_at: string
           description: string | null
@@ -1294,7 +1296,6 @@ export type Database = {
         | "contribution"
       acquisition_type: "booster" | "trade" | "gift" | "achievement"
       battle_status: "pending" | "active" | "finished"
-      card_condition: "mint" | "excellent" | "good" | "fair" | "poor"
       notification_type:
         | "trade_offer"
         | "trade_accepted"
@@ -1461,7 +1462,6 @@ export const Constants = {
       ],
       acquisition_type: ["booster", "trade", "gift", "achievement"],
       battle_status: ["pending", "active", "finished"],
-      card_condition: ["mint", "excellent", "good", "fair", "poor"],
       notification_type: [
         "trade_offer",
         "trade_accepted",

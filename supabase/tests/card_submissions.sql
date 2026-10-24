@@ -27,7 +27,7 @@ INSERT INTO storage.objects (bucket_id, name) VALUES
   ('submission-images', '91000000-0000-0000-0000-000000000001/92000000-0000-0000-0000-000000000002.jpg');
 SELECT set_config('test.submission_data', jsonb_build_object(
   'captured_at', now(), 'city', 'Berlin', 'location', 'Bordstein',
-  'country', 'DE', 'found_on', CURRENT_DATE, 'condition', 'fair',
+  'country', 'DE', 'found_on', CURRENT_DATE,
   'observations', 'Viele Flecken, eine Ecke eingerissen',
   'name', 'Meine Bordsteinliege', 'description', 'Sie wartet unter der Laterne auf den nächsten Umzug.',
   'surroundings', 'Unter einer Laterne', 'discovery_story', 'Beim Spaziergang entdeckt',

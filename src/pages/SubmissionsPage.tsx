@@ -142,7 +142,7 @@ function SubmissionItem({ submission: s, imageUrl, moderation, onChanged }: {
     </details>}
     <details className="text-sm"><summary className="cursor-pointer text-purple-200">Funddetails und Stat-Vergleich</summary>
       <dl className="mt-3 space-y-2">
-        <div><dt className="text-muted-foreground">Fundort / Funddatum / Zustand</dt><dd>{s.location}, {s.city}, {s.country} · {s.found_on} · {s.condition}</dd></div>
+        <div><dt className="text-muted-foreground">Fundort / Funddatum</dt><dd>{s.location}, {s.city}, {s.country} · {s.found_on}</dd></div>
         <div><dt className="text-muted-foreground">Auffälligkeiten</dt><dd className="whitespace-pre-wrap">{s.observations}</dd></div>
         <div><dt className="text-muted-foreground">Umgebung</dt><dd className="whitespace-pre-wrap">{s.surroundings}</dd></div>
         {s.discovery_story && <div><dt className="text-muted-foreground">Fundgeschichte</dt><dd className="whitespace-pre-wrap">{s.discovery_story}</dd></div>}

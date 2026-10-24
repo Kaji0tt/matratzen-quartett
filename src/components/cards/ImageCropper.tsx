@@ -1,23 +1,24 @@
 import { useEffect, useRef, useState } from 'react'
+import { Check, Minus, Plus, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { exportImageCrop, getImageCrop } from '@/lib/image-crop'
+import { exportImageCrop, getImageCrop, moveImageCrop } from '@/lib/image-crop'
 import { errorMessage } from '@/lib/submissions'
 
-export function ImageCropper({ source, outputType, onApply, onCancel }: {
+export function ImageCropper({ source, outputType, onApply, onCancel, fullscreen = false }: {
   source: Blob
   outputType: 'image/png' | 'image/jpeg'
   onApply: (file: File) => void
   onCancel: () => void
+  fullscreen?: boolean
 }) {
   const image = useRef<HTMLImageElement>(null)
+  const surface = useRef<HTMLDivElement>(null)
   const active = useRef(true)
   const exporting = useRef(false)
-  const drag = useRef<{ id: number; x: number; y: number; horizontal: number; vertical: number } | null>(null)
+  const pointers = useRef(new Map<number, { x: number; y: number }>())
   const [url, setUrl] = useState('')
   const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null)
-  const [zoom, setZoom] = useState(1)
-  const [horizontal, setHorizontal] = useState(50)
-  const [vertical, setVertical] = useState(50)
+  const [selection, setSelection] = useState({ zoom: 1, horizontal: 50, vertical: 50 })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -25,14 +26,25 @@ export function ImageCropper({ source, outputType, onApply, onCancel }: {
     active.current = true
     const objectUrl = URL.createObjectURL(source)
     setUrl(objectUrl)
+    setDimensions(null)
+    setSelection({ zoom: 1, horizontal: 50, vertical: 50 })
+    pointers.current.clear()
     return () => {
       active.current = false
       URL.revokeObjectURL(objectUrl)
     }
   }, [source])
 
-  const selection = { zoom, horizontal, vertical }
   const crop = dimensions ? getImageCrop(dimensions.width, dimensions.height, selection) : null
+
+  function gesture(bounds: DOMRect) {
+    const [first, second = first] = [...pointers.current.values()]
+    return {
+      x: ((first.x + second.x) / 2 - bounds.left) / bounds.width,
+      y: ((first.y + second.y) / 2 - bounds.top) / bounds.height,
+      distance: Math.hypot(first.x - second.x, first.y - second.y),
+    }
+  }
 
   async function apply() {
     if (!image.current || !dimensions || exporting.current) return
@@ -50,60 +62,55 @@ export function ImageCropper({ source, outputType, onApply, onCancel }: {
     }
   }
 
-  return <section aria-label="Bildausschnitt wählen" className="space-y-4 rounded-xl border border-purple-400/40 bg-slate-900 p-4">
-    <h3 className="font-semibold">Bildausschnitt wählen</h3>
-    <p className="text-sm text-muted-foreground">Der Ausschnitt ist immer quadratisch (1:1). Das sichtbare Bild wird gespeichert. Zum Verschieben ziehen oder die Regler nutzen.</p>
-    {url && <div className="relative mx-auto w-full max-w-sm overflow-hidden rounded-lg bg-black touch-none"
-      style={{ aspectRatio: 1, width: 'min(100%, 45dvh)' }}
-      onPointerDown={(event) => {
-        if (busy || !dimensions || event.button !== 0) return
-        event.currentTarget.setPointerCapture(event.pointerId)
-        drag.current = { id: event.pointerId, x: event.clientX, y: event.clientY, horizontal, vertical }
-      }}
-      onPointerMove={(event) => {
-        const start = drag.current
-        if (!start || start.id !== event.pointerId || !crop || !dimensions || busy) return
-        const bounds = event.currentTarget.getBoundingClientRect()
-        const extraWidth = dimensions.width - crop.width
-        const extraHeight = dimensions.height - crop.height
-        const clamp = (value: number) => Math.min(100, Math.max(0, value))
-        if (extraWidth > 0) setHorizontal(clamp(start.horizontal - (event.clientX - start.x) / bounds.width * crop.width / extraWidth * 100))
-        if (extraHeight > 0) setVertical(clamp(start.vertical - (event.clientY - start.y) / bounds.height * crop.height / extraHeight * 100))
-      }}
-      onPointerUp={() => { drag.current = null }}
-      onPointerCancel={() => { drag.current = null }}
-      onLostPointerCapture={() => { drag.current = null }}
+  return <section aria-label="Bildausschnitt wählen" className={fullscreen ? 'submission-crop' : 'space-y-4 rounded-xl border border-purple-400/40 bg-slate-900 p-4'}>
+    {fullscreen && url && <img src={url} alt="" aria-hidden="true" className="submission-crop-backdrop" />}
+    <div className={fullscreen ? 'submission-crop-stage touch-none' : 'touch-none'}
+        onPointerDown={(event) => {
+          if (busy || !dimensions || event.button !== 0 || pointers.current.size >= 2) return
+          event.currentTarget.setPointerCapture(event.pointerId)
+          pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY })
+        }}
+        onPointerMove={(event) => {
+          if (!pointers.current.has(event.pointerId) || !dimensions || !surface.current || busy) return
+          const bounds = surface.current.getBoundingClientRect()
+          const before = gesture(bounds)
+          pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY })
+          const after = gesture(bounds)
+          setSelection((current) => moveImageCrop(dimensions.width, dimensions.height, current, before, after))
+        }}
+        onPointerUp={(event) => pointers.current.delete(event.pointerId)}
+        onPointerCancel={(event) => pointers.current.delete(event.pointerId)}
+        onLostPointerCapture={(event) => pointers.current.delete(event.pointerId)}
     >
-      <img ref={image} src={url} alt="Vorschau des gewählten Bildausschnitts" draggable={false}
-        className="absolute max-w-none select-none"
-        style={crop && dimensions ? {
-          width: `${dimensions.width / crop.width * 100}%`, height: `${dimensions.height / crop.height * 100}%`,
-          left: `${-crop.x / crop.width * 100}%`, top: `${-crop.y / crop.height * 100}%`,
-        } : { width: '100%', height: '100%', objectFit: 'contain' }}
-        onLoad={(event) => setDimensions({ width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight })}
-        onError={() => { setDimensions(null); setError('Das Bild konnte nicht geöffnet werden. Bitte ein anderes Foto wählen.') }} />
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0 grid grid-cols-3 grid-rows-3 border-2 border-purple-300/80">
-        {Array.from({ length: 9 }, (_, index) => <span key={index} className="border border-white/20" />)}
-      </div>
-    </div>}
-    <fieldset disabled={busy || !dimensions} className="space-y-3">
-      <label className="block text-sm">Zoom: {zoom.toFixed(2)}×
-        <input className="block w-full accent-purple-500" type="range" min="1" max="4" step="0.01" value={zoom} onChange={(event) => setZoom(Number(event.target.value))} />
-      </label>
-      <label className="block text-sm">Horizontaler Ausschnitt
-        <input className="block w-full accent-purple-500" type="range" min="0" max="100" step="0.1" value={horizontal}
-          disabled={!crop || !dimensions || dimensions.width - crop.width < 0.001} onChange={(event) => setHorizontal(Number(event.target.value))} />
-      </label>
-      <label className="block text-sm">Vertikaler Ausschnitt
-        <input className="block w-full accent-purple-500" type="range" min="0" max="100" step="0.1" value={vertical}
-          disabled={!crop || !dimensions || dimensions.height - crop.height < 0.001} onChange={(event) => setVertical(Number(event.target.value))} />
-      </label>
-      <Button type="button" variant="outline" onClick={() => { setZoom(1); setHorizontal(50); setVertical(50) }}>Ausschnitt zurücksetzen</Button>
-    </fieldset>
-    {error && <p role="alert" className="text-sm text-red-300">{error}</p>}
-    <div className="flex flex-wrap gap-3">
-      <Button type="button" disabled={busy || !dimensions} onClick={apply}>{busy ? 'Verarbeitet …' : 'Ausschnitt übernehmen'}</Button>
-      <Button type="button" variant="outline" disabled={busy} onClick={onCancel}>Abbrechen</Button>
+      {url && <div ref={surface} className={fullscreen ? 'submission-crop-window' : 'relative mx-auto aspect-square w-full overflow-hidden bg-black'}
+        style={fullscreen ? undefined : { maxWidth: 'min(100%, 45dvh)' }}>
+        <img ref={image} src={url} alt="Vorschau des gewählten Bildausschnitts" draggable={false}
+          className="pointer-events-none absolute max-w-none select-none"
+          style={crop && dimensions ? {
+            width: `${dimensions.width / crop.width * 100}%`, height: `${dimensions.height / crop.height * 100}%`,
+            left: `${-crop.x / crop.width * 100}%`, top: `${-crop.y / crop.height * 100}%`,
+          } : { width: '100%', height: '100%', objectFit: 'contain' }}
+          onLoad={(event) => setDimensions({ width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight })}
+          onError={() => { setDimensions(null); setError('Das Bild konnte nicht geöffnet werden. Bitte ein anderes Foto wählen.') }} />
+        <div aria-hidden="true" className={fullscreen ? 'submission-crop-mask' : 'pointer-events-none absolute inset-0 grid grid-cols-3 grid-rows-3 border-2 border-purple-300/80'}>
+          {!fullscreen && Array.from({ length: 9 }, (_, index) => <span key={index} className="border border-white/20" />)}
+        </div>
+      </div>}
+    </div>
+    <div className={fullscreen ? 'submission-crop-tools' : 'flex justify-center gap-3'}>
+      <Button type="button" variant="outline" className={fullscreen ? 'submission-tool submission-tool--round' : undefined} aria-label="Verkleinern" disabled={busy || !dimensions || selection.zoom <= 1}
+        onClick={() => setSelection((current) => ({ ...current, zoom: Math.max(1, current.zoom - 0.25) }))}><Minus className="h-4 w-4" /></Button>
+      <Button type="button" variant="outline" className={fullscreen ? 'submission-tool submission-tool--round' : undefined} aria-label="Ausschnitt zurücksetzen" disabled={busy || !dimensions}
+        onClick={() => setSelection({ zoom: 1, horizontal: 50, vertical: 50 })}><RotateCcw className="h-4 w-4" /></Button>
+      <Button type="button" variant="outline" className={fullscreen ? 'submission-tool submission-tool--round' : undefined} aria-label="Vergrößern" disabled={busy || !dimensions || selection.zoom >= 4}
+        onClick={() => setSelection((current) => ({ ...current, zoom: Math.min(4, current.zoom + 0.25) }))}><Plus className="h-4 w-4" /></Button>
+    </div>
+    {error && <p role="alert" className={fullscreen ? 'submission-crop-error' : 'text-sm text-red-300'}>{error}</p>}
+    <div className={fullscreen ? 'submission-crop-actions' : 'flex flex-wrap gap-3'}>
+      <Button type="button" className={fullscreen ? 'submission-tool submission-tool--confirm' : undefined} aria-label="Ausschnitt übernehmen" disabled={busy || !dimensions} onClick={apply}>
+        {fullscreen && <Check aria-hidden="true" className="h-5 w-5" />}{busy ? 'Verarbeitet …' : fullscreen ? 'Übernehmen' : 'Ausschnitt übernehmen'}
+      </Button>
+      {!fullscreen && <Button type="button" variant="outline" disabled={busy} onClick={onCancel}>Abbrechen</Button>}
     </div>
   </section>
 }

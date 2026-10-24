@@ -11,6 +11,11 @@ BEGIN
 END;
 $$;
 DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name IN ('cards', 'card_submissions') AND column_name = 'condition')
+    OR to_regtype('public.card_condition') IS NOT NULL THEN
+    RAISE EXCEPTION 'Obsolete mattress condition still exists';
+  END IF;
   IF NOT private.valid_submission_stats('{"witterung":0,"flecken":50,"ambiente":100,"komfort":50,"charakter":50}')
     OR private.valid_submission_stats('{"witterung":0,"ambiente":100,"komfort":50,"format":50,"charakter":50}')
     OR private.valid_submission_stats('{"alter":50,"flecken":50,"witterung":50,"geruch":50,"kontaminierung":50}')
@@ -27,7 +32,7 @@ INSERT INTO storage.objects (bucket_id, name) VALUES
   ('submission-images', '99000000-0000-0000-0000-000000000001/99000000-0000-0000-0000-000000000002.jpg');
 SELECT set_config('test.attribute_data', jsonb_build_object(
   'captured_at', now(), 'city', 'Berlin', 'location', 'Testviertel', 'country', 'DE',
-  'found_on', CURRENT_DATE, 'condition', 'good', 'observations', 'Gepolstert mit Blumenmuster',
+  'found_on', CURRENT_DATE, 'observations', 'Gepolstert mit Blumenmuster',
   'surroundings', 'Zwischen zwei Stuehlen', 'name', 'Dit is meine Liege',
   'description', 'Dit is meine Matratze, wa.',
   'proposed_stats', '{"witterung":10,"flecken":50,"ambiente":90,"komfort":70,"charakter":60}'::JSONB

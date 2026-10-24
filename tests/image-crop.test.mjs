@@ -1,8 +1,40 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { exportImageCrop, getImageCrop, MAX_IMAGE_BYTES, validateCardImage } from '../src/lib/image-crop.ts'
+import { exportImageCrop, getImageCrop, moveImageCrop, MAX_IMAGE_BYTES, validateCardImage } from '../src/lib/image-crop.ts'
 
 const centered = { zoom: 1, horizontal: 50, vertical: 50 }
+
+test('one-finger dragging follows the finger and clamps at the source edges', () => {
+  const before = { x: 0.5, y: 0.5, distance: 0 }
+  const selection = moveImageCrop(1200, 800, centered, before, { x: 0.75, y: 0.5, distance: 0 })
+  assert.deepEqual(getImageCrop(1200, 800, selection), { x: 0, y: 0, width: 800, height: 800 })
+  const edge = moveImageCrop(1200, 800, centered, before, { x: -10, y: -10, distance: 0 })
+  assert.deepEqual(getImageCrop(1200, 800, edge), { x: 400, y: 0, width: 800, height: 800 })
+})
+
+test('pinch zoom keeps the source pixel under the two-finger midpoint', () => {
+  const before = { x: 0.3, y: 0.6, distance: 100 }
+  const after = { x: 0.4, y: 0.5, distance: 200 }
+  const original = getImageCrop(1200, 800, centered)
+  const selection = moveImageCrop(1200, 800, centered, before, after)
+  const crop = getImageCrop(1200, 800, selection)
+  assert.equal(selection.zoom, 2)
+  assert.equal(original.x + before.x * original.width, crop.x + after.x * crop.width)
+  assert.equal(original.y + before.y * original.height, crop.y + after.y * crop.height)
+})
+
+test('pinch limits and transitions back to dragging stay square and in bounds', () => {
+  for (const [width, height] of [[1200, 800], [800, 1200], [800, 800]]) {
+    for (const distance of [0, 1, 10, 100, 1000]) {
+      const selection = moveImageCrop(width, height, centered, { x: 0.5, y: 0.5, distance: 100 }, { x: 0.8, y: 0.1, distance })
+      const dragged = moveImageCrop(width, height, selection, { x: 0.8, y: 0.1, distance: 0 }, { x: 0.6, y: 0.4, distance: 0 })
+      const crop = getImageCrop(width, height, dragged)
+      assert.ok(dragged.zoom >= 1 && dragged.zoom <= 4)
+      assert.equal(crop.width, crop.height)
+      assert.ok(crop.x >= 0 && crop.y >= 0 && crop.x + crop.width <= width && crop.y + crop.height <= height)
+    }
+  }
+})
 
 test('default and reset selections produce a centered square for any source format', () => {
   assert.deepEqual(getImageCrop(1200, 800, centered), { x: 200, y: 0, width: 800, height: 800 })

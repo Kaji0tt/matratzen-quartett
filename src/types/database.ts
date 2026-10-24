@@ -62,7 +62,6 @@ export interface Database {
           location: string
           city: string
           country: string
-          condition: string
           stat_alter: number
           stat_flecken: number
           stat_witterung: number
@@ -227,7 +226,6 @@ export interface Database {
     Functions: Record<string, never>
     Enums: {
       rarity: 'common' | 'rare' | 'epic' | 'legendary'
-      card_condition: 'mint' | 'excellent' | 'good' | 'fair' | 'poor'
       trade_status: 'pending' | 'accepted' | 'declined' | 'cancelled' | 'expired'
       battle_status: 'pending' | 'active' | 'finished'
       report_status: 'pending' | 'resolved' | 'dismissed'

@@ -11,11 +11,11 @@ import { errorMessage } from '@/lib/submissions'
 import { toast } from '@/hooks/use-toast'
 import { useAuthStore } from '@/store/auth-store'
 import { DEFAULT_STATS } from '@/types/submissions'
-import type { CardCondition, Rarity } from '@/types'
+import type { Rarity } from '@/types'
 
 async function loadManualCards(page: number) {
   const { data, error } = await supabase.from('manual_card_entries')
-    .select('*, cards!inner(*), user_cards(id,user_id,profiles!user_cards_user_id_fkey(username))')
+    .select('*, cards!inner(*,profiles!cards_photographer_id_fkey(username)), user_cards(id,user_id,profiles!user_cards_user_id_fkey(username))')
     .order('updated_at', { ascending: false }).order('card_id')
     .range(page * 20, page * 20 + 19)
   if (error) throw error
@@ -91,13 +91,16 @@ function ManualCardsEditor() {
 function ManualCardForm({ entry, onSaved, onClose }: {
   entry?: EditorRecord; onSaved: () => Promise<void>; onClose: () => void
 }) {
+  const currentUsername = useAuthStore((state) => state.profile?.username ?? '')
   const [id] = useState(() => entry?.card_id ?? crypto.randomUUID())
   const [name, setName] = useState(entry?.cards.name ?? '')
   const [description, setDescription] = useState(entry?.cards.description ?? '')
+  const [photographerUsername, setPhotographerUsername] = useState(
+    entry?.cards.photographer_username ?? entry?.cards.profiles?.username ?? currentUsername,
+  )
   const [city, setCity] = useState(entry?.cards.city ?? '')
   const [location, setLocation] = useState(entry?.cards.location ?? '')
   const [country, setCountry] = useState(entry?.cards.country ?? 'DE')
-  const [condition, setCondition] = useState<CardCondition>(entry?.cards.condition ?? 'good')
   const [rarity, setRarity] = useState<Rarity>(entry?.cards.rarity ?? 'common')
   const [notes, setNotes] = useState(entry?.cards.notes ?? '')
   const [stats, setStats] = useState(entry ? {
@@ -124,6 +127,7 @@ function ManualCardForm({ entry, onSaved, onClose }: {
   const balanced = total <= 300 && Object.values(stats).filter((value) => value > 85).length <= 1
   const valid = name.trim().length >= 2 && description.trim().length >= 10 && city.trim().length >= 2
     && location.trim().length >= 2 && /^[A-Z]{2}$/.test(country) && balanced && !validatingImage && !imageError && !cropping
+    && photographerUsername.length <= 50 && !/[\r\n]/.test(photographerUsername)
     && (!!photo || !!entry?.image_path)
 
   useEffect(() => {
@@ -191,7 +195,8 @@ function ManualCardForm({ entry, onSaved, onClose }: {
         p_id: id, p_expected_revision: entry?.revision ?? 0, p_image_path: path, p_owner_id: owner?.id,
         p_data: {
           name: name.trim(), description: description.trim(), city: city.trim(), location: location.trim(),
-          country, condition, rarity, notes: notes.trim(), stats: { ...stats }, image_url: image.publicUrl,
+          country, rarity, notes: notes.trim(), stats: { ...stats }, image_url: image.publicUrl,
+          photographer_username: photographerUsername.trim() || null,
         },
       })
       if (error) throw error
@@ -229,13 +234,13 @@ function ManualCardForm({ entry, onSaved, onClose }: {
         </>}
       <label className="block text-sm">Kartenname<Input required minLength={2} maxLength={80} value={name} onChange={(event) => setName(event.target.value)} /></label>
       <label className="block text-sm">Kartentext<textarea required minLength={10} maxLength={1000} className="mt-1 min-h-28 w-full rounded-lg border border-input bg-background p-3 text-sm" value={description} onChange={(event) => setDescription(event.target.value)} /></label>
+      <label className="block text-sm">Fotograf:in (@-Credit)<Input maxLength={50} value={photographerUsername}
+        onChange={(event) => setPhotographerUsername(event.target.value)} /></label>
+      <p className="-mt-3 text-xs text-muted-foreground">Wird auf der Karte mit @ angezeigt. Leer lassen, um den Profilnamen zu verwenden.</p>
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="block text-sm">Stadt<Input required minLength={2} maxLength={100} value={city} onChange={(event) => setCity(event.target.value)} /></label>
         <label className="block text-sm">Fundort / Viertel<Input required minLength={2} maxLength={150} value={location} onChange={(event) => setLocation(event.target.value)} /></label>
         <label className="block text-sm">Land (Ländercode)<Input required pattern="[A-Z]{2}" maxLength={2} value={country} onChange={(event) => setCountry(event.target.value.toUpperCase())} /></label>
-        <label className="block text-sm">Zustand<select className="mt-1 w-full rounded-lg border border-input bg-background p-3" value={condition} onChange={(event) => setCondition(event.target.value as CardCondition)}>
-          <option value="mint">Wie neu</option><option value="excellent">Sehr gut</option><option value="good">Gebraucht</option><option value="fair">Mitgenommen</option><option value="poor">Bordstein-Endboss</option>
-        </select></label>
         <label className="block text-sm">Seltenheit<select className="mt-1 w-full rounded-lg border border-input bg-background p-3" value={rarity} onChange={(event) => setRarity(event.target.value as Rarity)}>
           <option value="common">Gewöhnlich</option><option value="rare">Selten</option><option value="epic">Episch</option><option value="legendary">Legendär</option>
         </select></label>

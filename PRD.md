@@ -62,7 +62,7 @@
 
 ### Enums
 - `rarity`: common, rare, epic, legendary
-- `card_condition`: mint, excellent, good, fair, poor
+- Der Zustand gehört zur Besitzkopie (`user_cards.collectible_condition`), nicht zur fotografierten Matratze.
 - `trade_status`: pending, accepted, declined, cancelled, expired
 - `battle_status`: pending, active, finished
 - `report_status`: pending, resolved, dismissed
@@ -217,7 +217,7 @@ App
 
 ### Flow 5: Karte einreichen
 1. Foto hochladen
-2. Metadaten eingeben (Name, Standort, Zustand)
+2. Metadaten eingeben (Name, Standort)
 3. Zur Moderation eingereicht
 4. Moderator genehmigt/lehnt ab
 5. Push-Benachrichtigung an Einreicher

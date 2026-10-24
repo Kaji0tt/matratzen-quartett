@@ -7,10 +7,10 @@ export function Layout() {
 
   return (
     <div className="min-h-dvh bg-background">
-      <main className="min-h-dvh pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)]">
+      <main className={pathname === '/submit' ? 'min-h-dvh' : 'min-h-dvh pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)]'}>
         <Outlet />
       </main>
-      {!['/', '/collection', '/auth', '/auth/register'].includes(pathname) && (
+      {!['/', '/collection', '/auth', '/auth/register', '/submit'].includes(pathname) && (
         <Link to="/" className="page-back" aria-label="Zurück zu Home" title="Zurück zu Home">
           <ArrowLeft aria-hidden="true" />
         </Link>

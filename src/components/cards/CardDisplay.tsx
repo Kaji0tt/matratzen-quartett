@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import { MapPin, Star } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { cn, getRarityLabel } from '@/lib/utils'
+import { applyCardStatModifiers } from '@/lib/card-condition'
 import type { Card, Rarity } from '@/types'
 import { STAT_FIELDS } from '@/types/card-stats'
 
@@ -90,6 +91,7 @@ interface CardFrontProps {
 function CardFront({ card, size, showStats }: CardFrontProps) {
   const isSmall = size === 'sm'
   const isLarge = size === 'lg'
+  const stats = applyCardStatModifiers(card.stats, card.stat_modifiers)
 
   return (
     <div className="w-full h-full flex flex-col bg-gradient-to-b from-slate-800/80 to-slate-900/95">
@@ -142,15 +144,15 @@ function CardFront({ card, size, showStats }: CardFrontProps) {
         {showStats && isLarge && (
           <div className="mt-2 grid grid-cols-2 gap-1">
             {STAT_FIELDS.map(({ key, label }) => (
-              <div key={key} className="flex items-center gap-1" aria-label={`${label}: ${card.stats[key]}`}>
+              <div key={key} className="flex items-center gap-1" aria-label={`${label}: ${stats[key]}`}>
                 <span className="text-xs">{label}</span>
                 <div className="flex-1 h-1 bg-slate-700 rounded-full overflow-hidden">
                   <div
                     className="h-full bg-primary rounded-full"
-                    style={{ width: `${card.stats[key]}%` }}
+                    style={{ width: `${Math.min(Math.max(stats[key], 0), 105) / 105 * 100}%` }}
                   />
                 </div>
-                <span className="text-xs text-muted-foreground w-6 text-right">{card.stats[key]}</span>
+                <span className="text-xs text-muted-foreground w-6 text-right">{stats[key]}</span>
               </div>
             ))}
           </div>

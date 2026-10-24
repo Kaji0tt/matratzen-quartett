@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { Camera } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { errorMessage } from '@/lib/submissions'
 
 export function SubmissionCamera({ onCapture }: { onCapture: (file: File, capturedAt: string) => void }) {
@@ -73,13 +72,12 @@ export function SubmissionCamera({ onCapture }: { onCapture: (file: File, captur
     }, 'image/jpeg', 0.85)
   }
 
-  return <div className="space-y-4">
-    <p className="text-sm text-muted-foreground">Nur ein frisches Kamerafoto. Keine Galerie, keine Uploads. Bitte keine Gesichter, Kennzeichen oder privaten Daten aufnehmen.</p>
+  return <div className="absolute inset-0 bg-black">
     <video ref={video} autoPlay muted playsInline aria-label="Live-Kamera"
-      onLoadedData={() => setReady(true)} className="aspect-[3/4] w-full rounded-xl bg-black object-cover" />
-    {error && <p role="alert" className="text-sm text-red-300">{error}</p>}
-    <Button type="button" className="w-full gap-2" onClick={ready ? capture : start} disabled={starting}>
-      <Camera className="h-4 w-4" />{starting ? 'Kamera wird geöffnet …' : ready ? 'Foto aufnehmen' : 'Kamera aktivieren'}
-    </Button>
+      onLoadedData={() => setReady(true)} className="h-full w-full object-cover" />
+    {error && <p role="alert" className="submission-camera-error">{error}</p>}
+    <button type="button" className="submission-camera-button" onClick={ready ? capture : start} disabled={starting}>
+      <Camera aria-hidden="true" className="h-6 w-6" />{starting ? 'Öffnet …' : ready ? 'Aufnehmen' : 'Kamera'}
+    </button>
   </div>
 }

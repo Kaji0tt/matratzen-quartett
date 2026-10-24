@@ -6,6 +6,28 @@ export interface CropSelection {
   vertical: number
 }
 
+export interface CropGesture {
+  x: number
+  y: number
+  distance: number
+}
+
+export function moveImageCrop(
+  width: number, height: number, selection: CropSelection, before: CropGesture, after: CropGesture,
+): CropSelection {
+  const crop = getImageCrop(width, height, selection)
+  const zoom = Math.min(4, Math.max(1, selection.zoom * (before.distance > 0 ? after.distance / before.distance : 1)))
+  const size = Math.min(width, height) / zoom
+  const x = crop.x + before.x * crop.width - after.x * size
+  const y = crop.y + before.y * crop.height - after.y * size
+  const clamp = (value: number) => Math.min(100, Math.max(0, value))
+  return {
+    zoom,
+    horizontal: width > size ? clamp(x / (width - size) * 100) : 50,
+    vertical: height > size ? clamp(y / (height - size) * 100) : 50,
+  }
+}
+
 export function getImageCrop(width: number, height: number, selection: CropSelection) {
   const { zoom, horizontal, vertical } = selection
   if (![width, height, zoom, horizontal, vertical].every(Number.isFinite)

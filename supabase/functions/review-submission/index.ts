@@ -104,7 +104,7 @@ Deno.serve(async (req: Request) => {
           { role: 'user', content: JSON.stringify({
             name: current.submitted_name ?? current.name ?? `Fund aus ${current.city}`,
             description: current.submitted_description ?? current.description ?? current.observations,
-            city: current.city, condition: current.condition, observations: current.observations,
+            city: current.city, observations: current.observations,
             surroundings: current.surroundings, discovery_story: current.discovery_story,
             proposed_stats: current.proposed_stats, catalogue_average: baseline,
             catalogue_examples: catalogue.slice(0, 8).map(({ name, description }) => ({ name, description })),

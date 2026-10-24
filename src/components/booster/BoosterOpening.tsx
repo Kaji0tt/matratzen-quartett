@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { ArrowRight, Check, Crown, ScanLine, Sparkles } from 'lucide-react'
 import { StreetCard } from '@/components/cards/StreetCard'
 import { getRarityLabel } from '@/lib/utils'
+import { applyCardStatModifiers } from '@/lib/card-condition'
 import { useBoosterCarousel } from './use-booster-carousel'
 import type { Card, CardStats } from '@/types'
 import { STAT_LABELS } from '@/types/card-stats'
@@ -34,11 +35,14 @@ export function BoosterOpening({ cards, onComplete }: BoosterOpeningProps) {
       <div ref={carouselRef} className="booster-pack-grid booster-drop-carousel" role="group" aria-label="Erhaltene Karten auswählen">
         {cards.map((card, index) => (
           <div className="booster-pack-slot" key={`${card.id}-${index}`}>
+            <div
+              className={`booster-option booster-drop-card${index === activeIndex ? ' is-selected' : ''}${revealed.has(index) ? ' is-revealed' : ''}`}
+            >
             <button
               type="button"
-              className={`booster-option booster-drop-card${index === activeIndex ? ' is-selected' : ''}${revealed.has(index) ? ' is-revealed' : ''}`}
+              className="booster-drop-trigger"
               aria-pressed={index === activeIndex}
-              aria-label={revealed.has(index) ? `Karte ${index + 1}: ${card.name}, ${getRarityLabel(card.rarity)}, aufgedeckt. ${card.city}, ${card.country}. ${Object.entries(STAT_LABELS).map(([key, label]) => `${label}: ${card.stats[key as keyof CardStats]}`).join(', ')}` : `Karte ${index + 1}, verdeckt, ${index === activeIndex ? 'zum Aufdecken antippen' : 'auswählen'}`}
+              aria-label={revealed.has(index) ? `Karte ${index + 1}: ${card.name}, ${getRarityLabel(card.rarity)}, aufgedeckt. ${card.city}, ${card.country}. ${Object.entries(STAT_LABELS).map(([key, label]) => `${label}: ${applyCardStatModifiers(card.stats, card.stat_modifiers)[key as keyof CardStats]}`).join(', ')}` : `Karte ${index + 1}, verdeckt, ${index === activeIndex ? 'zum Aufdecken antippen' : 'auswählen'}`}
               aria-describedby="booster-card-instructions"
               onPointerDown={event => {
                 pressedCard.current = { index, x: event.clientX, y: event.clientY, selected: index === activeIndex && !isCarouselMoving }
@@ -60,8 +64,8 @@ export function BoosterOpening({ cards, onComplete }: BoosterOpeningProps) {
                 selectItem(next)
                 carouselRef.current?.children[next]?.querySelector('button')?.focus({ preventScroll: true })
               }}
-            >
-              <span className="booster-card-reveal" aria-hidden="true">
+            />
+              <span className="booster-card-reveal">
                 {revealed.has(index) ? <CardReveal card={card} /> : (
                   <span className="booster-card-back">
                     <CardSleeve />
@@ -69,14 +73,14 @@ export function BoosterOpening({ cards, onComplete }: BoosterOpeningProps) {
                   </span>
                 )}
               </span>
-            </button>
+            </div>
           </div>
         ))}
       </div>
       <div className="booster-reveal-actions">
         {allRevealed ? (
           <>
-            <p><Check aria-hidden="true" /> Alle Karten sind in deiner Demo-Sammlung.</p>
+            <p><Check aria-hidden="true" /> Alle Karten sind in deiner Sammlung.</p>
             <Link to="/collection" className="home-cta">Zur Sammlung<ArrowRight aria-hidden="true" /></Link>
             <button className="booster-text-button" onClick={onComplete}>Nächstes Pack wählen<ArrowRight aria-hidden="true" /></button>
           </>

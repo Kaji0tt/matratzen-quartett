@@ -1,6 +1,6 @@
-export type Rarity = 'common' | 'rare' | 'epic' | 'legendary'
+import type { CardStatModifiers, CollectibleCondition } from '../lib/card-condition.ts'
 
-export type CardCondition = 'mint' | 'excellent' | 'good' | 'fair' | 'poor'
+export type Rarity = 'common' | 'rare' | 'epic' | 'legendary'
 
 export interface Card {
   id: string
@@ -11,7 +11,9 @@ export interface Card {
   location: string
   city: string
   country: string
-  condition: CardCondition
+  collectible_condition?: CollectibleCondition | null
+  stat_modifiers?: CardStatModifiers
+  copy_kind?: 'creator' | 'editor'
   stats: CardStats
   notes?: string
   photographer_id: string
@@ -42,6 +44,8 @@ export interface UserCard {
   user_id: string
   card_id: string
   card: Card
+  collectible_condition?: CollectibleCondition | null
+  stat_modifiers?: CardStatModifiers
   acquired_at: string
   acquisition_type: 'booster' | 'trade' | 'gift' | 'achievement'
   is_for_trade: boolean

@@ -1,14 +1,20 @@
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react'
 import { useReducedMotion } from 'framer-motion'
 import { Link } from 'react-router-dom'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Coins, Crown, Plus, Zap } from 'lucide-react'
 import { BoosterOpening } from '@/components/booster/BoosterOpening'
 import { useBoosterCarousel } from '@/components/booster/use-booster-carousel'
 import { PlayingCards } from '@/components/ui/playing-cards'
 import { useDemoGameStore } from '@/store/demo-game-store'
+import { useAuthStore } from '@/store/auth-store'
+import { supabase } from '@/lib/supabase'
+import { DEMO_CARDS } from '@/lib/demo-cards'
+import { readCardStatModifiers } from '@/lib/card-condition'
 import { toast } from '@/hooks/use-toast'
 import { useFittedWordmark } from '@/hooks/use-fitted-wordmark'
 import { useViewportFit } from '@/hooks/use-viewport-fit'
+import type { Json } from '@/types/database-gen'
 import type { BoosterPack, Card } from '@/types'
 
 const BOOSTERS: BoosterPack[] = [
@@ -45,6 +51,17 @@ const BOOSTERS: BoosterPack[] = [
 const PACK_STYLES = ['cyan', 'violet', 'pink', 'gold'] as const
 type Phase = 'selecting' | 'opening' | 'charging' | 'burst' | 'revealing'
 const GRID_FLIGHT_MS = 620
+
+function readCardIds(result: Json): string[] {
+  if (typeof result !== 'object' || result === null || Array.isArray(result)) {
+    throw new Error('Die Booster-Antwort enthält keine Karten.')
+  }
+  const cardIds = result.card_ids
+  if (!Array.isArray(cardIds) || !cardIds.every((id): id is string => typeof id === 'string')) {
+    throw new Error('Die Booster-Antwort enthält ungültige Karten-IDs.')
+  }
+  return cardIds
+}
 
 function RetrowaveScene({ onHorizonReached }: { onHorizonReached: () => void }) {
   return (
@@ -106,23 +123,76 @@ function RetrowaveScene({ onHorizonReached }: { onHorizonReached: () => void }) 
 export function BoosterPage() {
   const { viewportRef, contentRef, scale } = useViewportFit()
   const [phase, setPhase] = useState<Phase>('selecting')
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const { carouselRef, activeIndex, setActiveIndex, isCarouselMoving, selectItem: selectPack } = useBoosterCarousel(phase === 'selecting')
   const [cards, setCards] = useState<Card[]>([])
   const purchaseLock = useRef(false)
+  const openingRequestId = useRef<string | null>(null)
   const pullStart = useRef<{ x: number; y: number; pointerId: number; pulling: boolean; maxDistance: number } | null>(null)
   const suppressClick = useRef(false)
   const pressedSelectedPack = useRef(false)
   const { brandRef, wordmarkRef: headingRef } = useFittedWordmark()
   const reduceMotion = useReducedMotion()
-  const coins = useDemoGameStore((state) => state.coins)
+  const user = useAuthStore((state) => state.user)
+  const queryClient = useQueryClient()
+  const demoCoins = useDemoGameStore((state) => state.coins)
+  const localCards = useDemoGameStore((state) => state.cards)
   const openBooster = useDemoGameStore((state) => state.openBooster)
-  const selected = BOOSTERS[activeIndex]
-  const canAfford = coins >= selected.price_coins
+  const livePacks = useQuery({
+    queryKey: ['booster-packs', user?.id],
+    enabled: !!user,
+    queryFn: async (): Promise<BoosterPack[]> => {
+      const { data, error } = await supabase
+        .from('booster_packs')
+        .select('*')
+        .eq('is_available', true)
+        .order('price_coins')
+      if (error) throw error
+      return data
+        .filter((pack) => pack.available_until === null || Date.parse(pack.available_until) > Date.now())
+        .map((pack) => ({
+          id: pack.id,
+          name: pack.name,
+          description: pack.description,
+          image_url: pack.image_url,
+          price_coins: pack.price_coins,
+          card_count: pack.card_count,
+          rarity_weights: {
+            common: pack.weight_common,
+            rare: pack.weight_rare,
+            epic: pack.weight_epic,
+            legendary: pack.weight_legendary,
+          },
+          is_available: pack.is_available,
+          available_until: pack.available_until ?? undefined,
+          limited_edition: pack.limited_edition,
+        }))
+    },
+    staleTime: 60_000,
+  })
+  const accountBalance = useQuery({
+    queryKey: ['booster-balance', user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('profiles').select('coins').eq('id', user!.id).single()
+      if (error) throw error
+      return data.coins
+    },
+    staleTime: 15_000,
+  })
+  const boosterPacks = user ? livePacks.data ?? [] : BOOSTERS
+  const selected = boosterPacks[activeIndex]
+  const coins = user ? accountBalance.data ?? 0 : demoCoins
+  const canAfford = !!selected && (!user || accountBalance.isSuccess) && coins >= selected.price_coins
+
+  useEffect(() => {
+    if (activeIndex >= boosterPacks.length && boosterPacks.length > 0) setActiveIndex(0)
+  }, [activeIndex, boosterPacks.length, setActiveIndex])
 
   const handlePullStart = (event: PointerEvent<HTMLButtonElement>, index: number) => {
     suppressClick.current = false
     pressedSelectedPack.current = index === activeIndex
-    if (index !== activeIndex || phase !== 'selecting' || !canAfford || !selected.is_available || !event.isPrimary || event.button !== 0) return
+    if (index !== activeIndex || phase !== 'selecting' || !canAfford || !selected?.is_available || !event.isPrimary || event.button !== 0) return
     const slotGap = Number.parseFloat(getComputedStyle(event.currentTarget).getPropertyValue('--slot-gap'))
     pullStart.current = {
       x: event.clientX, y: event.clientY, pointerId: event.pointerId, pulling: false,
@@ -191,21 +261,120 @@ export function BoosterPage() {
     if (phase === 'revealing') headingRef.current?.focus()
   }, [phase, headingRef])
 
-  const handleOpen = () => {
-    if (purchaseLock.current) return
+  const handleOpen = async () => {
+    if (purchaseLock.current || !selected) return
     purchaseLock.current = true
+    setIsSubmitting(true)
     try {
-      const received = openBooster(selected, globalThis.crypto.randomUUID())
+      const requestId = openingRequestId.current
+        ?? (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`)
+      openingRequestId.current = requestId
+      let received: Card[]
+      if (user) {
+        const { data, error } = await supabase.rpc('open_booster', {
+          p_booster_pack_id: selected.id,
+          p_request_id: requestId,
+        })
+        if (error) throw error
+        const cardIds = readCardIds(data)
+        if (cardIds.length !== selected.card_count) {
+          throw new Error('Die Anzahl der erhaltenen Karten stimmt nicht mit dem Booster überein.')
+        }
+        const receivedIds = [...new Set(cardIds)]
+        const [cardsResult, copiesResult] = await Promise.all([
+          supabase
+            .from('cards')
+            .select('*, profiles!cards_photographer_id_fkey(username)')
+            .eq('is_approved', true)
+            .in('id', receivedIds),
+          supabase
+            .from('user_cards')
+            .select('card_id,collectible_condition,stat_modifiers')
+            .eq('user_id', user.id)
+            .eq('acquisition_type', 'booster')
+            .in('card_id', receivedIds)
+            .order('acquired_at', { ascending: false })
+            .order('id'),
+        ])
+        if (cardsResult.error) throw cardsResult.error
+        if (copiesResult.error) throw copiesResult.error
+        const copiesByCard = new Map<string, { condition: typeof copiesResult.data[number]['collectible_condition']; modifiers: NonNullable<Card['stat_modifiers']> }[]>()
+        for (const copy of copiesResult.data) {
+          const modifiers = readCardStatModifiers(copy.stat_modifiers)
+          if (!modifiers) throw new Error('Für ein Booster-Exemplar fehlen die Kartenwert-Änderungen.')
+          const copies = copiesByCard.get(copy.card_id) ?? []
+          copies.push({ condition: copy.collectible_condition, modifiers })
+          copiesByCard.set(copy.card_id, copies)
+        }
+        const receivedCopies = new Map<string, { condition: typeof copiesResult.data[number]['collectible_condition']; modifiers: NonNullable<Card['stat_modifiers']> }[]>()
+        for (const id of cardIds) {
+          const copies = copiesByCard.get(id)
+          const received = receivedCopies.get(id) ?? []
+          const copy = copies?.[received.length]
+          if (!copy) throw new Error('Der Zustand eines erhaltenen Booster-Exemplars konnte nicht geladen werden.')
+          received.push(copy)
+          receivedCopies.set(id, received)
+        }
+        const cardsById = new Map(cardsResult.data.map((row) => [row.id, {
+          id: row.id,
+          name: row.name,
+          description: row.description,
+          rarity: row.rarity,
+          image_url: row.image_url,
+          location: row.location,
+          city: row.city,
+          country: row.country,
+          collectible_condition: receivedCopies.get(row.id)?.[0]?.condition,
+          stat_modifiers: receivedCopies.get(row.id)?.[0]?.modifiers,
+          stats: {
+            witterung: row.stat_witterung,
+            flecken: row.stat_flecken,
+            ambiente: row.stat_ambiente,
+            komfort: row.stat_komfort,
+            charakter: row.stat_charakter,
+          },
+          photographer_id: row.photographer_id,
+          photographer_username: row.profiles?.username ?? 'Unbekannt',
+          created_at: row.created_at,
+          is_approved: row.is_approved,
+          report_count: row.report_count,
+          edition_number: row.edition_number ?? undefined,
+          total_editions: row.total_editions ?? undefined,
+          notes: row.notes ?? undefined,
+          attributes: row.stats_need_review
+            ? [{ key: 'Werteprüfung', value: 'Migrierte Werte bitte prüfen.' }]
+            : [],
+        } satisfies Card]))
+        const receivedIndexes = new Map<string, number>()
+        received = cardIds.map((id) => {
+          const card = cardsById.get(id)
+          if (!card) throw new Error('Eine erhaltene Karte konnte nicht aus der Sammlung geladen werden.')
+          const index = receivedIndexes.get(id) ?? 0
+          receivedIndexes.set(id, index + 1)
+          const copy = receivedCopies.get(id)?.[index]
+          if (!copy) throw new Error('Der Zustand eines erhaltenen Booster-Exemplars konnte nicht geladen werden.')
+          return { ...card, collectible_condition: copy.condition, stat_modifiers: copy.modifiers }
+        })
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['booster-balance', user.id] }),
+          queryClient.invalidateQueries({ queryKey: ['catalogue', user.id] }),
+        ])
+      } else {
+        received = openBooster(selected, requestId, [...localCards, ...DEMO_CARDS])
+      }
       setCards(received)
       setPhase('opening')
     } catch (error) {
       purchaseLock.current = false
       console.error('Failed to open booster:', error)
+      if (user) void queryClient.invalidateQueries({ queryKey: ['booster-balance', user.id] })
       toast({
         title: 'Booster konnte nicht geöffnet werden',
         description: error instanceof Error ? error.message : 'Bitte versuche es erneut.',
         variant: 'destructive',
       })
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -214,7 +383,8 @@ export function BoosterPage() {
     setPhase('selecting')
     setCards([])
     purchaseLock.current = false
-    toast({ title: `${cards.length} Karten sind in deiner Demo-Sammlung!` })
+    openingRequestId.current = null
+    toast({ title: `${cards.length} Karten sind in deiner Sammlung!` })
     window.requestAnimationFrame(() => carouselRef.current?.querySelector<HTMLButtonElement>('button')?.focus())
   }
 
@@ -229,25 +399,32 @@ export function BoosterPage() {
             <span>von der Straße</span>
           </h1>
         </div>
-        <Link to="/shop" className="home-wallet booster-wallet" aria-label="Zum Demo-Münzen-Shop">
-          <Coins aria-hidden="true" />
-          <span role="status" aria-label={`Demo-Münzen: ${coins}`}>
-            {coins.toLocaleString('de-DE')}
-          </span>
-          <Plus aria-hidden="true" className="home-wallet__plus" />
-        </Link>
+        {user ? (
+          <div className="home-wallet booster-wallet" aria-label="Dein Münzguthaben">
+            <Coins aria-hidden="true" />
+            <span role="status" aria-label={`Münzen: ${accountBalance.isSuccess ? coins : 'lädt'}`}>
+              {accountBalance.isSuccess ? coins.toLocaleString('de-DE') : '…'}
+            </span>
+          </div>
+        ) : (
+          <Link to="/shop" className="home-wallet booster-wallet" aria-label="Zum Demo-Münzen-Shop">
+            <Coins aria-hidden="true" />
+            <span role="status" aria-label={`Demo-Münzen: ${coins}`}>{coins.toLocaleString('de-DE')}</span>
+            <Plus aria-hidden="true" className="home-wallet__plus" />
+          </Link>
+        )}
       </header>
 
       <section
         className={`booster-stage booster-stage--${phase}`}
         style={{ '--grid-flight': `${GRID_FLIGHT_MS}ms` } as CSSProperties}
         aria-label="Booster-Bühne"
-        aria-busy={phase !== 'selecting' && phase !== 'revealing'}
+        aria-busy={isSubmitting || (phase !== 'selecting' && phase !== 'revealing')}
       >
         <RetrowaveScene onHorizonReached={() => setPhase(previous => previous === 'charging' ? 'burst' : previous)} />
         {phase !== 'revealing' ? (
           <>
-            <div className={`booster-snap-overlay booster-tone--${PACK_STYLES[activeIndex]}${isCarouselMoving ? ' is-moving' : ''}`} aria-hidden="true">
+            <div className={`booster-snap-overlay booster-tone--${PACK_STYLES[activeIndex % PACK_STYLES.length]}${isCarouselMoving ? ' is-moving' : ''}`} aria-hidden="true">
               <div className="booster-snap-overlay__pack" />
             </div>
             <div className="booster-floor-line" aria-hidden="true">
@@ -257,30 +434,43 @@ export function BoosterPage() {
               ))}
             </div>
             <p id="booster-instructions" className="sr-only">Wische oder nutze die Pfeiltasten, um ein Pack auszuwählen. Tippe das mittige Pack erneut an oder ziehe es nach unten zur violett leuchtenden Grid-Linie, um es zum aufgedruckten Preis zu öffnen. Die Drop-Gewichte pro zufälliger Karte stehen in der Pack-Beschreibung.</p>
+            {user && livePacks.isLoading && <p role="status">Booster werden geladen …</p>}
+            {user && livePacks.isError && <p role="alert">Die verfügbaren Booster konnten nicht geladen werden: {livePacks.error.message}</p>}
+            {user && accountBalance.isError && <p role="alert">Dein Münzguthaben konnte nicht geladen werden: {accountBalance.error.message}</p>}
+            {user && livePacks.isSuccess && boosterPacks.length === 0 && <p role="status">Aktuell sind keine Booster verfügbar.</p>}
+            {boosterPacks.length > 0 && (
             <div ref={carouselRef} className="booster-pack-grid" role="group" aria-label="Booster-Pack auswählen">
-              {BOOSTERS.map((pack, index) => (
+              {boosterPacks.map((pack, index) => (
                 <div className="booster-pack-slot" key={pack.id}>
                   <button
                     type="button"
-                    className={`booster-option booster-tone--${PACK_STYLES[index]}${index === activeIndex ? ' is-selected' : ''}${index === activeIndex && canAfford && pack.is_available && phase === 'selecting' ? ' is-pullable' : ''}`}
+                    className={`booster-option booster-tone--${PACK_STYLES[index % PACK_STYLES.length]}${index === activeIndex ? ' is-selected' : ''}${index === activeIndex && canAfford && pack.is_available && phase === 'selecting' ? ' is-pullable' : ''}`}
                     aria-pressed={index === activeIndex}
-                    aria-label={`${pack.name}, ${pack.card_count} Karten, ${pack.price_coins} Demo-Münzen${index === activeIndex ? ', zum Öffnen antippen' : ', auswählen'}`}
+                    aria-label={`${pack.name}, ${pack.card_count} Karten, ${pack.price_coins} ${user ? 'Münzen' : 'Demo-Münzen'}${index === activeIndex ? ', zum Öffnen antippen' : ', auswählen'}`}
                     aria-describedby={`booster-instructions booster-details-${pack.id}`}
-                    disabled={phase !== 'selecting'}
+                    disabled={phase !== 'selecting' || isSubmitting}
                     onClick={event => {
                       if (suppressClick.current) {
                         suppressClick.current = false
                         return
                       }
                       if (index !== activeIndex || (event.detail > 0 && !pressedSelectedPack.current)) selectPack(index)
-                      else if (!canAfford) toast({ title: 'Nicht genug Demo-Münzen', description: `Dir fehlen ${selected.price_coins - coins} Demo-Münzen. Du kannst sie über das Guthaben im Header aufladen.`, variant: 'destructive' })
-                      else if (selected.is_available) handleOpen()
+                      else if (!selected) return
+                      else if (user && !accountBalance.isSuccess) toast({ title: 'Dein Münzguthaben ist noch nicht verfügbar.', variant: 'destructive' })
+                      else if (!canAfford) toast({
+                        title: user ? 'Nicht genug Münzen' : 'Nicht genug Demo-Münzen',
+                        description: user
+                          ? `Dir fehlen ${selected.price_coins - coins} Münzen.`
+                          : `Dir fehlen ${selected.price_coins - coins} Demo-Münzen. Du kannst sie über das Guthaben im Header aufladen.`,
+                        variant: 'destructive',
+                      })
+                      else if (selected.is_available) void handleOpen()
                       else toast({ title: 'Dieses Pack ist aktuell nicht verfügbar.', variant: 'destructive' })
                     }}
                     onKeyDown={event => {
-                      const next = event.key === 'ArrowRight' ? Math.min(index + 1, BOOSTERS.length - 1)
+                      const next = event.key === 'ArrowRight' ? Math.min(index + 1, boosterPacks.length - 1)
                         : event.key === 'ArrowLeft' ? Math.max(index - 1, 0)
-                          : event.key === 'Home' ? 0 : event.key === 'End' ? BOOSTERS.length - 1 : null
+                          : event.key === 'Home' ? 0 : event.key === 'End' ? boosterPacks.length - 1 : null
                       if (next === null) return
                       event.preventDefault()
                       selectPack(next)
@@ -299,7 +489,7 @@ export function BoosterPage() {
                       <span className="booster-foil__seam" />
                       <span className="booster-foil__brand"><Crown /><span>MATRATZEN</span><strong>QUARTETT</strong></span>
                       <span className="booster-foil__art"><PlayingCards /><Zap /></span>
-                      <span className="booster-foil__edition">{pack.name.replace(' Pack', '').toUpperCase()}<small>STREET FINDS / SERIES 01</small></span>
+                      <span className="booster-foil__edition">{pack.name.replace(' Pack', '').toUpperCase()}<small>{user ? pack.description : 'STREET FINDS / SERIES 01'}</small></span>
                       <span className="booster-foil__count">{pack.card_count} KARTEN <span>///</span> <Coins /> {pack.price_coins.toLocaleString('de-DE')}</span>
                       <span className="booster-foil__seam booster-foil__seam--bottom" />
                     </span>
@@ -308,6 +498,7 @@ export function BoosterPage() {
                 </div>
               ))}
             </div>
+            )}
             {phase !== 'selecting' && <span className="sr-only" role="status">Pack wird geöffnet</span>}
           </>
         ) : <BoosterOpening cards={cards} onComplete={handleComplete} />}

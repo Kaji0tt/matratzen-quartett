@@ -112,7 +112,10 @@ test('legacy demo migration preserves ownership, progress, weather and existing 
 })
 
 test('demo migration keeps new stats and rejects invalid persisted data explicitly', () => {
-  const card = { id: 'new', stats: DEFAULT_STATS }
+  const card = {
+    id: 'new', stats: DEFAULT_STATS, collectible_condition: 'good',
+    stat_modifiers: { witterung: 0, flecken: 0, ambiente: 0, komfort: 0, charakter: 0 },
+  }
   assert.deepEqual(migrateDemoCards({ cards: [card] }).cards, [card])
   for (const value of [null, {}, { cards: [null] }, { cards: [{ stats: { witterung: -1 } }] },
     { cards: [{ stats: { witterung: 10, flecken: 101 } }] }]) {
@@ -121,7 +124,11 @@ test('demo migration keeps new stats and rejects invalid persisted data explicit
 })
 
 test('demo migration merges uncommon into common without changing cards or progress', () => {
-  const legacyCard = { id: 'old', rarity: 'uncommon', stats: DEFAULT_STATS, description: 'Mein Text', attributes: [] }
+  const legacyCard = {
+    id: 'old', rarity: 'uncommon', stats: DEFAULT_STATS, description: 'Mein Text', attributes: [],
+    collectible_condition: 'good',
+    stat_modifiers: { witterung: 0, flecken: 0, ambiente: 0, komfort: 0, charakter: 0 },
+  }
   const state = { coins: 777, wins: 4, cards: [legacyCard], boosterRequests: { purchase: ['old'] } }
   const migrated = migrateDemoCards(state)
   assert.deepEqual(migrated, { ...state, cards: [{ ...legacyCard, rarity: 'common' }] })

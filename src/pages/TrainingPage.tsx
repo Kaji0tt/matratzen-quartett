@@ -6,6 +6,7 @@ import { StreetPageHeader } from '@/components/layout/StreetPageHeader'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { getDemoDayKey, useDemoGameStore, type DemoMatchMode, type DemoMatchResult } from '@/store/demo-game-store'
+import { applyCardStatModifiers } from '@/lib/card-condition'
 import type { Card as GameCard, CardStats } from '@/types'
 
 import { STAT_LABELS as statLabels } from '@/types/card-stats'
@@ -64,8 +65,10 @@ export function TrainingPage() {
   const playRound = (playerCard: GameCard, stat: keyof CardStats) => {
     if (!match || match.result) return
     const opponentCard = chooseOpponentCard(match.opponentCards)
-    const playerWins = playerCard.stats[stat] > opponentCard.stats[stat]
-    const draws = playerCard.stats[stat] === opponentCard.stats[stat]
+    const playerStats = applyCardStatModifiers(playerCard.stats, playerCard.stat_modifiers)
+    const opponentStats = applyCardStatModifiers(opponentCard.stats, opponentCard.stat_modifiers)
+    const playerWins = playerStats[stat] > opponentStats[stat]
+    const draws = playerStats[stat] === opponentStats[stat]
     const playerCards = match.playerCards.filter((card) => card.id !== playerCard.id)
     const opponentCards = match.opponentCards.filter((card) => card.id !== opponentCard.id)
     if (playerWins) playerCards.push(playerCard, opponentCard)
@@ -81,10 +84,10 @@ export function TrainingPage() {
     }
 
     const message = draws
-      ? `Gleichstand bei ${statLabels[stat]} (${playerCard.stats[stat]}). Beide Karten bleiben liegen.`
+      ? `Gleichstand bei ${statLabels[stat]} (${playerStats[stat]}). Beide Karten bleiben liegen.`
       : playerWins
-        ? `Du gewinnst mit ${statLabels[stat]}: ${playerCard.stats[stat]} zu ${opponentCard.stats[stat]}. Du erhältst die gegnerische Karte.`
-        : `Der Trainingsgegner gewinnt mit ${statLabels[stat]}: ${opponentCard.stats[stat]} zu ${playerCard.stats[stat]}.`
+        ? `Du gewinnst mit ${statLabels[stat]}: ${playerStats[stat]} zu ${opponentStats[stat]}. Du erhältst die gegnerische Karte.`
+        : `Der Trainingsgegner gewinnt mit ${statLabels[stat]}: ${opponentStats[stat]} zu ${playerStats[stat]}.`
 
     if (result) finishMatch(match.id, result)
     setMatch({
@@ -198,7 +201,7 @@ export function TrainingPage() {
                           size="sm"
                           onClick={() => playRound(card, stat)}
                         >
-                          <span>{statLabels[stat]}</span><b>{card.stats[stat]}</b>
+                          <span>{statLabels[stat]}</span><b>{applyCardStatModifiers(card.stats, card.stat_modifiers)[stat]}</b>
                         </Button>
                       ))}
                     </div>

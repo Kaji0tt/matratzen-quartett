@@ -25,7 +25,8 @@ INSERT INTO storage.objects (bucket_id, name)
 VALUES ('manual-card-images', '95000000-0000-0000-0000-000000000001/96000000-0000-0000-0000-000000000001.png');
 SELECT set_config('test.manual_data', '{
   "name":"PNG-Patina","description":"Ein manuelles Bordsteinjuwel mit neonfarbener Patina.",
-  "city":"Berlin","location":"Testviertel","country":"DE","condition":"fair","rarity":"rare","notes":"Manuell erstellt",
+  "city":"Berlin","location":"Testviertel","country":"DE","rarity":"rare","notes":"Manuell erstellt",
+  "photographer_username":"@hardcoded_credit",
   "image_url":"https://example.invalid/storage/v1/object/public/manual-card-images/95000000-0000-0000-0000-000000000001/96000000-0000-0000-0000-000000000001.png",
   "stats":{"witterung":85,"flecken":47,"ambiente":75,"komfort":63,"charakter":30}
 }', TRUE);
@@ -63,7 +64,8 @@ DO $$ BEGIN
   END IF;
   IF NOT EXISTS (SELECT 1 FROM public.cards WHERE id='95000000-0000-0000-0000-000000000001'
     AND stat_witterung=85 AND stat_ambiente=75 AND stat_komfort=63 AND stat_flecken=47
-    AND stat_charakter=30 AND NOT stats_need_review) THEN
+    AND stat_charakter=30 AND NOT stats_need_review
+    AND photographer_username='@hardcoded_credit') THEN
     RAISE EXCEPTION 'Manual editor did not publish the exact new attributes';
   END IF;
   IF EXISTS (SELECT 1 FROM public.user_cards WHERE manual_entry_id='95000000-0000-0000-0000-000000000001') THEN
@@ -81,7 +83,15 @@ SELECT set_config('test.linked_copy', (SELECT id::TEXT FROM public.user_cards WH
 SELECT public.save_manual_card(
   '95000000-0000-0000-0000-000000000001',2,
   '95000000-0000-0000-0000-000000000001/96000000-0000-0000-0000-000000000001.png',
-  '94000000-0000-0000-0000-000000000001',jsonb_set(current_setting('test.manual_data')::JSONB,'{name}','"PNG-Patina Edition 2"'));
+  '94000000-0000-0000-0000-000000000001',
+  jsonb_set(jsonb_set(current_setting('test.manual_data')::JSONB,'{name}','"PNG-Patina Edition 2"'),
+    '{photographer_username}','"@edited_credit"'));
+DO $$ BEGIN
+  IF (SELECT photographer_username FROM public.cards WHERE id='95000000-0000-0000-0000-000000000001')
+    <> '@edited_credit' THEN
+    RAISE EXCEPTION 'Manual card photographer credit was not updated';
+  END IF;
+END $$;
 RESET ROLE;
 INSERT INTO public.user_cards (user_id, card_id, acquisition_type)
 VALUES ('94000000-0000-0000-0000-000000000001','95000000-0000-0000-0000-000000000001','booster');
@@ -120,6 +130,10 @@ END $$;
 SELECT pg_temp.expect_error($q$SELECT public.save_manual_card(
   '95000000-0000-0000-0000-000000000001',4,
   '95000000-0000-0000-0000-000000000001/96000000-0000-0000-0000-000000000001.png',
+  NULL,jsonb_set(current_setting('test.manual_data')::JSONB,'{photographer_username}',to_jsonb(repeat('x',51))))$q$, '22023');
+SELECT pg_temp.expect_error($q$SELECT public.save_manual_card(
+  '95000000-0000-0000-0000-000000000001',4,
+  '95000000-0000-0000-0000-000000000001/96000000-0000-0000-0000-000000000001.png',
   '94000000-0000-0000-0000-000000000005',jsonb_set(current_setting('test.manual_data')::JSONB,'{name}','"Should not persist"'))$q$, '22023');
 SELECT pg_temp.expect_error($q$SELECT public.save_manual_card(
   '95000000-0000-0000-0000-000000000001',3,
@@ -138,10 +152,11 @@ SET LOCAL ROLE authenticated;
 SELECT public.save_manual_card(
   p_id => '95000000-0000-0000-0000-000000000001', p_expected_revision => 4,
   p_image_path => '95000000-0000-0000-0000-000000000001/96000000-0000-0000-0000-000000000001.png',
-  p_data => current_setting('test.manual_data')::JSONB);
+  p_data => jsonb_set(current_setting('test.manual_data')::JSONB,'{photographer_username}','""'));
 RESET ROLE;
 DO $$ BEGIN
   IF EXISTS (SELECT 1 FROM public.user_cards WHERE manual_entry_id='95000000-0000-0000-0000-000000000001')
+    OR (SELECT photographer_username FROM public.cards WHERE id='95000000-0000-0000-0000-000000000001') IS NOT NULL
     OR (SELECT count(*) FROM public.user_cards WHERE card_id='95000000-0000-0000-0000-000000000001') <> 1
     OR (SELECT cards_collected FROM public.profiles WHERE id='94000000-0000-0000-0000-000000000002') <> 0
     OR (SELECT count(*) FROM public.notifications WHERE user_id IN (

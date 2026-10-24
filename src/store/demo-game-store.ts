@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { BoosterPack, Card, Rarity } from '@/types'
+import { conditionForModifierTotal, getModifierTotal, rollCardStatModifiers } from '@/lib/card-condition'
 import { migrateDemoCards } from '@/lib/demo-card-migration'
 import { toast } from '@/hooks/use-toast'
 
@@ -59,7 +60,7 @@ interface DemoGameState {
   checkout: DemoCheckout | null
   track: (name: DemoEventName, properties?: DemoEvent['properties']) => void
   addCard: (card: Card) => boolean
-  openBooster: (pack: BoosterPack, requestId: string) => Card[]
+  openBooster: (pack: BoosterPack, requestId: string, collection: Card[]) => Card[]
   claimDailyReward: () => boolean
   startMatch: (matchId: string, mode: DemoMatchMode) => boolean
   finishMatch: (matchId: string, result: DemoMatchResult) => boolean
@@ -97,6 +98,15 @@ function makeId(): string {
   return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`
 }
 
+function rollCardCopy(card: Card): Card {
+  const stat_modifiers = rollCardStatModifiers()
+  return {
+    ...card,
+    stat_modifiers,
+    collectible_condition: conditionForModifierTotal(getModifierTotal(stat_modifiers)),
+  }
+}
+
 function makeCard(rarity: Rarity, imageUrl = ''): Card {
   const values = Array.from({ length: 5 }, () => Math.floor(10 + Math.random() * 76))
   values[Math.floor(Math.random() * values.length)] = Math.floor(86 + Math.random() * 15)
@@ -119,7 +129,6 @@ function makeCard(rarity: Rarity, imageUrl = ''): Card {
     location: locations[Math.floor(Math.random() * locations.length)],
     city: cities[Math.floor(Math.random() * cities.length)],
     country: 'DE',
-    condition: rarity === 'legendary' ? 'poor' : rarity === 'epic' ? 'fair' : 'good',
     stats: {
       witterung: values[0],
       flecken: values[1],
@@ -153,7 +162,7 @@ function starterCards(): Card[] {
   ]
   const rarities: Rarity[] = ['common', 'common', 'common', 'common', 'common']
 
-  return names.map((name, index) => ({
+  return names.map((name, index) => rollCardCopy({
     ...makeCard(rarities[index]),
     id: `starter-${index + 1}`,
     name,
@@ -166,11 +175,15 @@ export function getDemoDayKey(date = new Date()): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
-function drawRarity(weights: BoosterPack['rarity_weights'], minRank = 0): Rarity {
+function drawRarity(
+  weights: BoosterPack['rarity_weights'],
+  availableRarities: ReadonlySet<Rarity>,
+  minRank = 0,
+): Rarity {
   const eligible = (Object.entries(weights) as [Rarity, number][])
-    .filter(([rarity, weight]) => weight > 0 && rarityRank[rarity] >= minRank)
+    .filter(([rarity, weight]) => weight > 0 && rarityRank[rarity] >= minRank && availableRarities.has(rarity))
   const totalWeight = eligible.reduce((sum, [, weight]) => sum + weight, 0)
-  if (totalWeight <= 0) throw new Error('Für dieses Booster-Pack sind keine gültigen Seltenheiten konfiguriert.')
+  if (totalWeight <= 0) throw new Error('Für dieses Booster-Pack sind keine passenden Karten in der Sammlung vorhanden.')
 
   let roll = Math.random() * totalWeight
   for (const [rarity, weight] of eligible) {
@@ -222,7 +235,7 @@ export const useDemoGameStore = create<DemoGameState>()(
           throw new Error('Der lokale Demo-Bildspeicher ist voll. Entferne gespeicherte Demo-Karten oder nutze einen anderen Browser.')
         }
         set((state) => ({
-          cards: [card, ...state.cards],
+          cards: [rollCardCopy({ ...card, copy_kind: 'creator' }), ...state.cards],
           cardsContributed: state.cardsContributed + 1,
           events: addEvent(
             addEvent(state.events, makeEvent('upload_completed')),
@@ -231,7 +244,7 @@ export const useDemoGameStore = create<DemoGameState>()(
         }))
         return true
       },
-      openBooster: (pack, requestId) => {
+      openBooster: (pack, requestId, collection) => {
         if (!requestId.trim()) throw new Error('Für das Öffnen wird eine eindeutige Anfrage-ID benötigt.')
         const state = get()
         const previousIds = state.boosterRequests[requestId]
@@ -252,10 +265,15 @@ export const useDemoGameStore = create<DemoGameState>()(
           || pack.card_count > 20
           || weights.some((weight) => !Number.isFinite(weight) || weight < 0)
         ) throw new Error('Die Booster-Konfiguration ist ungültig.')
-        if (state.cards.length + pack.card_count > 500) {
-          throw new Error('Für dieses Booster-Pack ist in der lokalen Demo-Sammlung nicht genug Platz.')
-        }
         if (state.coins < pack.price_coins) throw new Error('Dafür hast du nicht genug Demo-Münzen.')
+
+        const cardPool = [...new Map(
+          [...state.cards, ...collection]
+            .filter((card) => card.is_approved)
+            .map((card) => [card.id, card]),
+        ).values()]
+        const availableRarities = new Set(cardPool.map((card) => card.rarity))
+        if (cardPool.length === 0) throw new Error('In der Sammlung sind keine freigegebenen Karten verfügbar.')
 
         const cards = Array.from({ length: pack.card_count }, (_, index) => {
           const guaranteedRank = pack.name.toLowerCase().includes('mega') && index === 0
@@ -263,12 +281,34 @@ export const useDemoGameStore = create<DemoGameState>()(
             : pack.name.toLowerCase().includes('legendary') && index === 0
               ? rarityRank.epic
               : 0
-          return makeCard(drawRarity(pack.rarity_weights, guaranteedRank))
+          const rarity = drawRarity(pack.rarity_weights, availableRarities, guaranteedRank)
+          const candidates = cardPool.filter((card) => card.rarity === rarity)
+          return candidates[Math.floor(Math.random() * candidates.length)]
         })
+        const additions = [...new Map(cards.map((card) => [card.id, card])).values()]
+          .filter((card) => !state.cards.some((owned) => owned.id === card.id))
+          .map(rollCardCopy)
+        if (state.cards.length + additions.length > 500) {
+          throw new Error('Für dieses Booster-Pack ist in der lokalen Demo-Sammlung nicht genug Platz.')
+        }
+        const imageCharacters = additions.reduce(
+          (total, card) => total + (card.image_url.startsWith('data:image/') ? card.image_url.length : 0),
+          state.cards.reduce(
+            (stored, owned) => stored + (owned.image_url.startsWith('data:image/') ? owned.image_url.length : 0),
+            0,
+          ),
+        )
+        if (imageCharacters > maxStoredDemoImageCharacters) {
+          throw new Error('Der lokale Demo-Bildspeicher ist voll. Entferne gespeicherte Demo-Karten oder nutze einen anderen Browser.')
+        }
         const event = makeEvent('booster_opened', { pack: pack.name, cards: cards.length })
+        const additionsById = new Map(additions.map((card) => [card.id, card]))
+        const received = cards.map((card) => additionsById.get(card.id)
+          ?? state.cards.find((owned) => owned.id === card.id)
+          ?? card)
         set((current) => ({
           coins: current.coins - pack.price_coins,
-          cards: [...cards, ...current.cards],
+          cards: [...additions, ...current.cards],
           boostersOpened: current.boostersOpened + 1,
           boosterRequests: Object.fromEntries(
             Object.entries({
@@ -278,7 +318,7 @@ export const useDemoGameStore = create<DemoGameState>()(
           ),
           events: addEvent(current.events, event),
         }))
-        return cards
+        return received
       },
       claimDailyReward: () => {
         if (get().lastDailyReward === getDemoDayKey()) return false
@@ -377,7 +417,7 @@ export const useDemoGameStore = create<DemoGameState>()(
     }),
     {
       name: 'matratzen-quartett-demo-game-v1',
-      version: 3,
+      version: 4,
       migrate: migrateDemoCards,
       onRehydrateStorage: () => (_state, error) => {
         if (error) {
